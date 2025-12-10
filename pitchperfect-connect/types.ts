@@ -3,7 +3,7 @@ export enum UserRole {
   COACH = 'COACH'
 }
 
-export type StatGroup = 'Attacking' | 'Defending' | 'Physical' | 'Mental';
+export type StatGroup = 'Technical' | 'Tactical' | 'Physical' | 'Psychological';
 
 export interface Stat {
   name: string;
@@ -12,16 +12,38 @@ export interface Stat {
   fullMark: number;
 }
 
+export interface AttendanceRecord {
+  attendanceScore: number; // 0-10
+  commitmentScore: number; // 0-10
+  note: string;
+}
+
+export interface RatingsSummary {
+  applicationScore: number; // 0-10
+  behaviourScore: number; // 0-10
+  coachComment: string;
+}
+
+export interface Improvements {
+  keyArea: string;
+  buildOnArea: string;
+}
+
 export interface ReportCard {
   id: string;
-  season: string; // e.g., "2025/26"
-  quarter: string; // e.g., "Q1", "Q2"
+  season: string;
+  quarter: string;
   date: string;
-  stats: Stat[];
-  summary: string;
-  strengths: string[];
-  improvements: string[];
-  coachNotes: string;
+  
+  // New Structure
+  attendance: AttendanceRecord;
+  stats: Stat[]; // Covers Technical, Tactical, Physical, Psychological
+  strengths: string[]; // 3 items
+  improvements: Improvements;
+  ratingsSummary: RatingsSummary;
+  finalSummary: string; // The main coach paragraph
+  
+  // Legacy/Computed helpers
   overallRating: number;
 }
 
@@ -31,14 +53,23 @@ export interface Player {
   position: string;
   jerseyNumber: number;
   imageUrl: string;
-  accessCode: string; // Simulating a password for parents
+  accessCode: string;
   reportCards: ReportCard[];
-  ageGroup: string;
+  ageGroup: string; // This acts as the "Team" identifier
 }
 
 export interface User {
   id: string;
   name: string;
   role: UserRole;
-  linkedPlayerId?: string; // If parent
+}
+
+export interface Coach extends User {
+  role: UserRole.COACH;
+  email: string;
+  instagramHandle?: string;
+  password?: string; // Simple auth
+  assignedTeams: string[]; // e.g. ["U-8 Teals", "U-10 Reds"]
+  isAdmin: boolean;
+  imageUrl?: string;
 }

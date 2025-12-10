@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { ReportCard, Player } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GOOGLE_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const generateCoachFeedback = async (
   player: Player,
@@ -10,26 +10,29 @@ export const generateCoachFeedback = async (
 ): Promise<string> => {
   try {
     const prompt = `
-      You are an expert youth football (soccer) coach.
+      You are an expert youth football (soccer) coach at a high-performance academy.
       Generate a constructive, encouraging, but honest report card summary for a player named ${player.name} (${player.ageGroup}, ${player.position}).
       
-      Here are the player's recent stats (grouped by category):
+      Here are the player's recent stats (Technical, Tactical, Physical, Psychological):
       ${statsInput}
 
       Here are my raw notes as a coach:
       ${rawNotes}
 
       Please provide a structured response with:
-      1. A short Summary paragraph (approx 50 words) focusing on the season progress.
+      1. A detailed Final Summary paragraph (approx 80-100 words) focusing on the season progress, suitable for a formal report.
       2. 3 Key Strengths (be specific based on the stats).
-      3. 2 Areas for Improvement.
+      3. Improvement Areas: One "Key Improvement" (the main focus) and one "Build on" area (something they are doing okay at but can master).
       
-      Format the output as JSON so I can parse it easily.
+      Format the output as JSON.
       Schema:
       {
         "summary": "string",
         "strengths": ["string", "string", "string"],
-        "improvements": ["string", "string"]
+        "improvements": {
+            "keyArea": "string",
+            "buildOnArea": "string"
+        }
       }
     `;
 
@@ -58,9 +61,10 @@ export const askCoachAI = async (
       Player: ${player.name}, Age Group: ${player.ageGroup}, Position: ${player.position}.
       Season: ${reportCard.season}, Quarter: ${reportCard.quarter}.
       Stats: ${JSON.stringify(reportCard.stats)}.
-      Coach Notes: ${reportCard.coachNotes}.
+      Attendance: ${JSON.stringify(reportCard.attendance)}.
       Strengths: ${reportCard.strengths.join(', ')}.
-      Improvements: ${reportCard.improvements.join(', ')}.
+      Improvements: Key: ${reportCard.improvements.keyArea}, Build-on: ${reportCard.improvements.buildOnArea}.
+      Coach Final Summary: ${reportCard.finalSummary}.
     `;
 
     const prompt = `
@@ -68,8 +72,8 @@ export const askCoachAI = async (
       
       Parent's Question: "${question}"
       
-      You are an AI Assistant for the football club. Answer the parent's question based on the player's specific report card data.
-      Be helpful, suggest specific drills if asked, and maintain a positive, encouraging tone. Keep the answer concise (under 150 words).
+      You are an AI Assistant for the JDA Football Academy. Answer the parent's question based on the player's specific report card data.
+      Be helpful, suggest specific drills if asked, and maintain a professional, encouraging tone. Keep the answer concise (under 150 words).
     `;
 
     const response = await ai.models.generateContent({

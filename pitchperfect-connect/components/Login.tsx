@@ -4,9 +4,10 @@ import { Shield, KeyRound, User as UserIcon, Lock } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (role: UserRole, id: string) => void;
+  teamLogo: string;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, teamLogo }) => {
   const [activeTab, setActiveTab] = useState<'parent' | 'coach'>('parent');
   const [playerId, setPlayerId] = useState('');
   const [accessCode, setAccessCode] = useState('');
@@ -20,11 +21,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   const handleCoachLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (coachPass === 'admin') {
-      onLogin(UserRole.COACH, 'coach1');
-    } else {
-      setError('Invalid Coach Password (Try "admin")');
-    }
+    // Pass the entered password to the main App component to validate against the list of coaches
+    onLogin(UserRole.COACH, coachPass);
   };
 
   return (
@@ -40,8 +38,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         
         {/* Header */}
         <div className="bg-black p-8 text-center border-b-4 border-teal-500">
-          <div className="mx-auto bg-zinc-900 w-20 h-20 rounded-full flex items-center justify-center mb-4 shadow-lg border-2 border-teal-500">
-            <Shield className="text-teal-400 w-10 h-10" />
+          <div className="mx-auto w-40 h-40 mb-6 relative">
+            <div className="w-full h-full rounded-full border-4 border-teal-500 shadow-2xl bg-black overflow-hidden flex items-center justify-center">
+               <img src={teamLogo} alt="Academy Logo" className="w-full h-full object-cover" />
+            </div>
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">JDA ACADEMY</h1>
           <p className="text-teal-500 text-xs font-bold tracking-widest uppercase mt-2">Player Performance Portal</p>
@@ -136,14 +136,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   <input
                     type="password"
                     required
-                    placeholder="Enter admin password"
+                    placeholder="Enter password"
                     className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all font-medium"
                     value={coachPass}
                     onChange={(e) => setCoachPass(e.target.value)}
                   />
                 </div>
                 <p className="text-xs text-gray-400 mt-3 text-center">
-                   Password is "admin"
+                   Default Admin Password: "admin"
                 </p>
               </div>
 
