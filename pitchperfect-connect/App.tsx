@@ -10,7 +10,24 @@ const App: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>(() => {
     try {
       const saved = localStorage.getItem('jda_players');
-      return saved ? JSON.parse(saved) : MOCK_PLAYERS;
+      // Basic validation: ensure we have an array
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+           // DATA INTEGRITY CHECK:
+           // Check if this is "Old Data" missing the new 'stats' structure.
+           // If we find a report card that doesn't have a 'stats' array, we assume the data is corrupt/outdated.
+           const hasLegacyData = parsed.some((p: any) => 
+             Array.isArray(p.reportCards) && p.reportCards.some((r: any) => !r.stats || !Array.isArray(r.stats))
+           );
+
+           if (!hasLegacyData) {
+             return parsed;
+           }
+           console.warn("Legacy player data detected (missing stats). Resetting to defaults to prevent crash.");
+        }
+      }
+      return MOCK_PLAYERS;
     } catch (e) {
       console.error("Error loading players:", e);
       return MOCK_PLAYERS;
@@ -21,7 +38,16 @@ const App: React.FC = () => {
   const [coaches, setCoaches] = useState<Coach[]>(() => {
     try {
       const saved = localStorage.getItem('jda_coaches');
-      return saved ? JSON.parse(saved) : MOCK_COACHES;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Check if the data is stale (Admin missing password field)
+        const admin = parsed.find((c: Coach) => c.isAdmin);
+        if (admin && admin.password) {
+          return parsed;
+        }
+        console.log("Old data detected. Resetting Coach database to enable Admin login.");
+      }
+      return MOCK_COACHES;
     } catch (e) {
       console.error("Error loading coaches:", e);
       return MOCK_COACHES;
@@ -83,6 +109,7 @@ const App: React.FC = () => {
     if (role === UserRole.COACH) {
       // Credentials is the password entered
       const coach = coaches.find(c => c.password === credentials);
+      
       if (coach) {
         setCurrentUser(coach);
         setUserRole(UserRole.COACH);

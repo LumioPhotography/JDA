@@ -53,7 +53,8 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, pre
   };
 
   const renderStatGroup = (group: StatGroup) => {
-    const groupStats = reportCard.stats.filter(s => s.group === group);
+    // Safety check: ensure stats exists
+    const groupStats = (reportCard.stats || []).filter(s => s.group === group);
     if (groupStats.length === 0) return null;
 
     const borderColor = group === 'Technical' ? 'border-blue-100' :
@@ -150,18 +151,18 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, pre
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="bg-gray-50 p-3 rounded-lg text-center border border-gray-100">
-                        <span className="block text-2xl font-black text-gray-900">{reportCard.attendance.attendanceScore}/10</span>
+                        <span className="block text-2xl font-black text-gray-900">{reportCard.attendance?.attendanceScore || 0}/10</span>
                         <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Attendance</span>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-lg text-center border border-gray-100">
-                        <span className="block text-2xl font-black text-gray-900">{reportCard.attendance.commitmentScore}/10</span>
+                        <span className="block text-2xl font-black text-gray-900">{reportCard.attendance?.commitmentScore || 0}/10</span>
                         <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Commitment</span>
                     </div>
                 </div>
             </div>
             <div className="flex-1 w-full border-l border-gray-100 md:pl-6">
                 <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-2">Coach's Note</span>
-                <p className="text-sm text-gray-700 italic font-medium">"{reportCard.attendance.note}"</p>
+                <p className="text-sm text-gray-700 italic font-medium">"{reportCard.attendance?.note || 'No comment'}"</p>
             </div>
         </div>
 
@@ -181,7 +182,7 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, pre
                     <TrendingUp size={16} /> 3 Key Strengths
                 </h3>
                 <ul className="space-y-3">
-                    {reportCard.strengths.map((strength, idx) => (
+                    {(reportCard.strengths || []).map((strength, idx) => (
                         <li key={idx} className="flex items-start gap-3">
                             <div className="bg-teal-100 text-teal-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">{idx + 1}</div>
                             <span className="text-sm font-bold text-gray-700">{strength}</span>
@@ -198,11 +199,11 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, pre
                 <div className="space-y-4">
                     <div className="bg-amber-50 p-3 rounded-lg border border-amber-100">
                         <span className="text-[10px] text-amber-600 uppercase font-bold tracking-widest block mb-1">Key Improvement</span>
-                        <p className="text-sm font-bold text-gray-800">{reportCard.improvements.keyArea}</p>
+                        <p className="text-sm font-bold text-gray-800">{reportCard.improvements?.keyArea || '-'}</p>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
                         <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-1">Build-on Area</span>
-                        <p className="text-sm font-bold text-gray-800">{reportCard.improvements.buildOnArea}</p>
+                        <p className="text-sm font-bold text-gray-800">{reportCard.improvements?.buildOnArea || '-'}</p>
                     </div>
                 </div>
             </div>
@@ -215,16 +216,16 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, pre
              </h3>
              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                  <div className="text-center bg-white/5 rounded-xl p-4 border border-white/10">
-                     <span className="block text-3xl font-black text-white">{reportCard.ratingsSummary.applicationScore}/10</span>
+                     <span className="block text-3xl font-black text-white">{reportCard.ratingsSummary?.applicationScore || 0}/10</span>
                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mt-2 block">Application &<br/>Understanding</span>
                  </div>
                  <div className="text-center bg-white/5 rounded-xl p-4 border border-white/10">
-                     <span className="block text-3xl font-black text-white">{reportCard.ratingsSummary.behaviourScore}/10</span>
+                     <span className="block text-3xl font-black text-white">{reportCard.ratingsSummary?.behaviourScore || 0}/10</span>
                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mt-2 block">Behaviour &<br/>Attitude</span>
                  </div>
                  <div className="bg-white/5 rounded-xl p-4 border border-white/10 flex flex-col justify-center">
                       <span className="text-[10px] text-teal-400 uppercase font-bold tracking-wider mb-2">Coach Comment</span>
-                      <p className="text-sm font-medium italic text-gray-300">"{reportCard.ratingsSummary.coachComment}"</p>
+                      <p className="text-sm font-medium italic text-gray-300">"{reportCard.ratingsSummary?.coachComment || '-'}"</p>
                  </div>
              </div>
         </div>

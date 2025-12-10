@@ -42,7 +42,8 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ player, coaches, onLo
     // New Categories
     const groups = ['Technical', 'Tactical', 'Physical', 'Psychological'];
     return groups.map(group => {
-       const stats = currentReport.stats.filter(s => s.group === group);
+       // Added safety check: (currentReport.stats || []) prevents crash on old data
+       const stats = (currentReport.stats || []).filter(s => s.group === group);
        const avg = stats.length ? Math.round(stats.reduce((a,b)=>a+b.value,0)/stats.length) : 0;
        return { subject: group, A: avg, fullMark: 100 };
     });
