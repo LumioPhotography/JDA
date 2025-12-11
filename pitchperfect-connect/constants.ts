@@ -1,15 +1,15 @@
-import { Player, UserRole, User, StatGroup, Coach } from './types';
+import { Player, UserRole, StatGroup, Coach, Team, Branch } from './types';
 
-export const TEAM_LOGO_URL = "https://cdn-icons-png.flaticon.com/512/1665/1665670.png"; // REPLACE THIS WITH YOUR IMAGE URL
+export const TEAM_LOGO_URL = "https://cdn-icons-png.flaticon.com/512/1665/1665670.png"; 
 
-// Helper to create stats
+// Helper to create stats (Scale 1-5)
 const createStats = (
   technical: number[], 
   tactical: number[], 
   physical: number[], 
   psychological: number[]
 ) => {
-  const mkStat = (name: string, group: StatGroup, val: number) => ({ name, group, value: val, fullMark: 100 });
+  const mkStat = (name: string, group: StatGroup, val: number) => ({ name, group, value: val, fullMark: 5 });
   
   return [
     // Technical (7 items)
@@ -44,14 +44,21 @@ const createStats = (
   ];
 };
 
+export const MOCK_TEAMS: Team[] = [
+  { id: 't1', name: 'U-8 Teals' },
+  { id: 't2', name: 'U-10 Reds' },
+  { id: 't3', name: 'Elite Squad' }
+];
+
 export const MOCK_PLAYERS: Player[] = [
   {
     id: 'p1',
     name: 'Luke Skehill',
+    branch: 'ACADEMY',
+    teamId: 'U-8 Teals',
     position: 'Midfield',
     jerseyNumber: 7,
     imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Luke&backgroundColor=b6e3f4',
-    ageGroup: 'U-8 Teals',
     accessCode: '1234',
     reportCards: [
       {
@@ -59,17 +66,17 @@ export const MOCK_PLAYERS: Player[] = [
         season: '2025/26',
         quarter: 'Term 2',
         date: '2025-12-12',
-        overallRating: 88,
+        overallRating: 4.2,
         attendance: {
-          attendanceScore: 9.5,
-          commitmentScore: 9,
+          attendanceScore: 5,
+          commitmentScore: 4,
           note: "Excellent attendance record."
         },
         stats: createStats(
-          [85, 80, 75, 88, 82, 85, 70], // Technical
-          [80, 85, 82, 78, 80],         // Tactical
-          [90, 88, 75, 92],             // Physical
-          [95, 90, 95, 85, 90, 92]      // Psychological
+          [4, 4, 3, 5, 4, 4, 3], // Technical
+          [4, 4, 4, 3, 4],       // Tactical
+          [5, 4, 3, 5],          // Physical
+          [5, 5, 5, 4, 4, 5]     // Psychological
         ),
         strengths: ["Work Rate", "Passing Range", "Speed"],
         improvements: {
@@ -77,22 +84,36 @@ export const MOCK_PLAYERS: Player[] = [
            buildOnArea: "Using left foot for crossing."
         },
         ratingsSummary: {
-          applicationScore: 9,
-          behaviourScore: 10,
+          applicationScore: 5,
+          behaviourScore: 5,
           coachComment: "A model student."
         },
-        finalSummary: "Luke has had a fantastic term. His energy on the pitch is infectious and he is becoming a real leader for the U-8s. He needs to continue working on checking his shoulder before receiving."
+        finalSummary: "Luke has had a fantastic term. His energy on the pitch is infectious and he is becoming a real leader for the U-8s. He needs to continue working on checking his shoulder before receiving.",
+        targets: [
+          { id: 'tg1', description: 'Score 5 goals with left foot', achieved: false },
+          { id: 'tg2', description: 'Lead the warm up', achieved: true }
+        ]
       }
     ]
   },
   {
     id: 'p2',
     name: 'Mason Mount-Jr',
+    branch: 'ACADEMY',
+    teamId: 'U-8 Teals',
     position: 'Forward',
     jerseyNumber: 10,
     imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mason&backgroundColor=c0aede',
-    ageGroup: 'U-8 Teals',
     accessCode: '7777',
+    reportCards: []
+  },
+  {
+    id: 'p3',
+    name: 'Sarah Coachable',
+    branch: 'COACHING',
+    position: 'Goalkeeper',
+    imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&backgroundColor=ffdfbf',
+    accessCode: '1111',
     reportCards: []
   }
 ];

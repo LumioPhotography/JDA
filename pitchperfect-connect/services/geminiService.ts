@@ -10,24 +10,18 @@ export const generateCoachFeedback = async (
 ): Promise<string> => {
   try {
     const prompt = `
-      You are an expert youth football (soccer) coach at a high-performance academy.
-      Generate a constructive, encouraging, but honest report card summary for a player named ${player.name} (${player.ageGroup}, ${player.position}).
+      You are an expert football coach at JDA Academy.
+      Generate a report card summary for ${player.name} (${player.position}).
       
-      Here are the player's recent stats (Technical, Tactical, Physical, Psychological):
+      Stats (Scale 1-5):
       ${statsInput}
 
-      Here are my raw notes as a coach:
+      Coach Notes:
       ${rawNotes}
 
-      Please provide a structured response with:
-      1. A detailed Final Summary paragraph (approx 80-100 words) focusing on the season progress, suitable for a formal report.
-      2. 3 Key Strengths (be specific based on the stats).
-      3. Improvement Areas: One "Key Improvement" (the main focus) and one "Build on" area (something they are doing okay at but can master).
-      
-      Format the output as JSON.
-      Schema:
+      Provide JSON:
       {
-        "summary": "string",
+        "summary": "Short 1-2 sentence summary of progress.",
         "strengths": ["string", "string", "string"],
         "improvements": {
             "keyArea": "string",
@@ -39,9 +33,7 @@ export const generateCoachFeedback = async (
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
-      config: {
-        responseMimeType: "application/json"
-      }
+      config: { responseMimeType: "application/json" }
     });
 
     return response.text || "{}";
@@ -58,22 +50,15 @@ export const askCoachAI = async (
 ): Promise<string> => {
   try {
     const context = `
-      Player: ${player.name}, Age Group: ${player.ageGroup}, Position: ${player.position}.
-      Season: ${reportCard.season}, Quarter: ${reportCard.quarter}.
-      Stats: ${JSON.stringify(reportCard.stats)}.
-      Attendance: ${JSON.stringify(reportCard.attendance)}.
-      Strengths: ${reportCard.strengths.join(', ')}.
-      Improvements: Key: ${reportCard.improvements.keyArea}, Build-on: ${reportCard.improvements.buildOnArea}.
-      Coach Final Summary: ${reportCard.finalSummary}.
+      Player: ${player.name}, Position: ${player.position}.
+      Stats (1-5 scale): ${JSON.stringify(reportCard.stats)}.
+      Summary: ${reportCard.finalSummary}.
     `;
 
     const prompt = `
       Context: ${context}
-      
-      Parent's Question: "${question}"
-      
-      You are an AI Assistant for the JDA Football Academy. Answer the parent's question based on the player's specific report card data.
-      Be helpful, suggest specific drills if asked, and maintain a professional, encouraging tone. Keep the answer concise (under 150 words).
+      Parent Question: "${question}"
+      Answer as a helpful coach. Keep it under 100 words.
     `;
 
     const response = await ai.models.generateContent({
@@ -81,9 +66,21 @@ export const askCoachAI = async (
       contents: prompt,
     });
 
-    return response.text || "I couldn't generate a response at this time.";
+    return response.text || "I couldn't generate a response.";
   } catch (error) {
-    console.error("Chat error:", error);
     return "Sorry, I'm having trouble connecting to the coach AI right now.";
   }
 };
+
+export const getDrillSuggestion = async (area: string): Promise<string> => {
+  try {
+    const prompt = `Suggest one specific, simple football training drill to improve: "${area}". Keep it under 30 words.`;
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt
+    });
+    return response.text || "Practice daily controls.";
+  } catch {
+      return "Practice regularly to improve this skill.";
+  }
+}

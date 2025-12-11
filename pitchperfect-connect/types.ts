@@ -3,30 +3,38 @@ export enum UserRole {
   COACH = 'COACH'
 }
 
+export type Branch = 'ACADEMY' | 'COACHING';
+
 export type StatGroup = 'Technical' | 'Tactical' | 'Physical' | 'Psychological';
 
 export interface Stat {
   name: string;
   group: StatGroup;
-  value: number; // 0-100
-  fullMark: number;
+  value: number; // 1-5
+  fullMark: number; // 5
 }
 
 export interface AttendanceRecord {
-  attendanceScore: number; // 0-10
-  commitmentScore: number; // 0-10
+  attendanceScore: number; // 1-5
+  commitmentScore: number; // 1-5
   note: string;
 }
 
 export interface RatingsSummary {
-  applicationScore: number; // 0-10
-  behaviourScore: number; // 0-10
+  applicationScore: number; // 1-5
+  behaviourScore: number; // 1-5
   coachComment: string;
 }
 
 export interface Improvements {
   keyArea: string;
   buildOnArea: string;
+}
+
+export interface Target {
+  id: string;
+  description: string;
+  achieved: boolean;
 }
 
 export interface ReportCard {
@@ -37,25 +45,32 @@ export interface ReportCard {
   
   // New Structure
   attendance: AttendanceRecord;
-  stats: Stat[]; // Covers Technical, Tactical, Physical, Psychological
-  strengths: string[]; // 3 items
+  stats: Stat[]; 
+  strengths: string[]; 
   improvements: Improvements;
   ratingsSummary: RatingsSummary;
-  finalSummary: string; // The main coach paragraph
+  finalSummary: string;
+  targets: Target[];
   
-  // Legacy/Computed helpers
-  overallRating: number;
+  // Computed helpers
+  overallRating: number; // Stored as 1-5 (can be decimal)
+}
+
+export interface Team {
+  id: string;
+  name: string;
 }
 
 export interface Player {
   id: string;
   name: string;
+  branch: Branch;
+  teamId?: string; // Only for Academy
   position: string;
-  jerseyNumber: number;
+  jerseyNumber?: number; // Only for Academy
   imageUrl: string;
   accessCode: string;
   reportCards: ReportCard[];
-  ageGroup: string; // This acts as the "Team" identifier
 }
 
 export interface User {
@@ -68,8 +83,8 @@ export interface Coach extends User {
   role: UserRole.COACH;
   email: string;
   instagramHandle?: string;
-  password?: string; // Simple auth
-  assignedTeams: string[]; // e.g. ["U-8 Teals", "U-10 Reds"]
+  password?: string; 
+  assignedTeams: string[]; 
   isAdmin: boolean;
   imageUrl?: string;
 }

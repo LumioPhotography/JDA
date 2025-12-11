@@ -2,65 +2,51 @@ import React, { useState, useEffect } from 'react';
 import Login from './components/Login';
 import ParentDashboard from './components/ParentDashboard';
 import CoachDashboard from './components/CoachDashboard';
-import { UserRole, Player, Coach } from './types';
+import { UserRole, Player, Coach, Team } from './types';
 import { storage } from './services/storage';
-import { MOCK_PLAYERS, MOCK_COACHES } from './constants';
+import { MOCK_PLAYERS, MOCK_COACHES, MOCK_TEAMS } from './constants';
 import { Loader2, Wifi } from 'lucide-react';
 
 const App: React.FC = () => {
-  // State
   const [loading, setLoading] = useState(true);
   const [players, setPlayers] = useState<Player[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [teamLogo, setTeamLogo] = useState<string>("");
 
   const [currentUser, setCurrentUser] = useState<Coach | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loggedInPlayerId, setLoggedInPlayerId] = useState<string | null>(null);
 
-  // Helper to fetch all data
   const fetchData = async () => {
-    // We attempt to fetch from Supabase. 
-    // If keys are missing/invalid, storage service returns [] and we fall back to MOCK data.
-    const [fetchedPlayers, fetchedCoaches, fetchedLogo] = await Promise.all([
+    const [fetchedPlayers, fetchedCoaches, fetchedTeams, fetchedLogo] = await Promise.all([
       storage.fetchPlayers(),
       storage.fetchCoaches(),
+      storage.fetchTeams(),
       storage.fetchTeamLogo()
     ]);
 
     setPlayers(fetchedPlayers.length > 0 ? fetchedPlayers : MOCK_PLAYERS);
     setCoaches(fetchedCoaches.length > 0 ? fetchedCoaches : MOCK_COACHES);
+    setTeams(fetchedTeams.length > 0 ? fetchedTeams : MOCK_TEAMS);
     setTeamLogo(fetchedLogo);
   };
 
-  // Initial Data Load & Real-time Subscription
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-
-      // 1. Load initial data
       await fetchData();
       setLoading(false);
-
-      // 2. Subscribe to Real-time Changes
-      // This will only work if the API keys are valid. If not, it just won't receive updates.
       const unsubscribe = storage.subscribeToUpdates(() => {
         console.log("Remote change detected, refreshing data...");
         fetchData();
       });
-
-      return () => {
-        unsubscribe();
-      };
+      return () => unsubscribe();
     };
-
     init();
   }, []);
 
-  // --- Actions ---
-
   const handleUpdatePlayer = (updatedPlayer: Player) => {
-    // Optimistic Update (Update UI immediately)
     setPlayers(prev => prev.map(p => p.id === updatedPlayer.id ? updatedPlayer : p));
     storage.savePlayer(updatedPlayer);
   };
@@ -70,9 +56,19 @@ const App: React.FC = () => {
     storage.savePlayer(newPlayer);
   };
 
+  const handleDeletePlayer = (id: string) => {
+    setPlayers(prev => prev.filter(p => p.id !== id));
+    storage.deletePlayer(id);
+  }
+
   const handleUpdateCoaches = (updatedCoaches: Coach[]) => {
     setCoaches(updatedCoaches);
     updatedCoaches.forEach(c => storage.saveCoach(c));
+  };
+
+  const handleAddTeam = (newTeam: Team) => {
+    setTeams(prev => [...prev, newTeam]);
+    storage.saveTeam(newTeam);
   };
 
   const handleUpdateTeamLogo = (newUrl: string) => {
@@ -115,15 +111,10 @@ const App: React.FC = () => {
     setCurrentUser(null);
   };
 
-  // --- Render ---
-
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-white gap-6">
         <Loader2 className="animate-spin text-teal-500" size={48} />
-        <p className="text-sm font-bold tracking-widest uppercase text-gray-500 flex items-center gap-2">
-          <Wifi size={16} /> Connecting to Cloud...
-        </p>
       </div>
     );
   }
@@ -138,9 +129,12 @@ const App: React.FC = () => {
         currentUser={currentUser}
         players={players} 
         coaches={coaches}
+        teams={teams}
         onUpdatePlayer={handleUpdatePlayer} 
         onAddPlayer={handleAddPlayer}
+        onDeletePlayer={handleDeletePlayer}
         onUpdateCoaches={handleUpdateCoaches}
+        onAddTeam={handleAddTeam}
         onLogout={handleLogout}
         teamLogo={teamLogo}
         onUpdateTeamLogo={handleUpdateTeamLogo}
