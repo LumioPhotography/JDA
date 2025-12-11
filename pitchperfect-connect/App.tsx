@@ -26,7 +26,38 @@ const App: React.FC = () => {
       storage.fetchTeamLogo()
     ]);
 
-    setPlayers(fetchedPlayers.length > 0 ? fetchedPlayers : MOCK_PLAYERS);
+    // Sanitization: Handle legacy data (0-100 stats -> 1-5 stats) and missing fields
+    const sanitizedPlayers = (fetchedPlayers.length > 0 ? fetchedPlayers : MOCK_PLAYERS).map(p => {
+        return {
+            ...p,
+            // Default legacy players to ACADEMY if undefined
+            branch: p.branch || 'ACADEMY',
+            // Default legacy players to Unassigned team if undefined
+            teamId: p.teamId || (p.branch === 'COACHING' ? undefined : 'Unassigned'),
+            reportCards: p.reportCards?.map(rc => ({
+                ...rc,
+                // Convert old stats if they are > 5 (legacy data was 0-100)
+                stats: rc.stats.map(s => ({
+                    ...s,
+                    value: s.value > 5 ? Math.round(s.value / 20) : s.value,
+                    fullMark: 5
+                })),
+                overallRating: rc.overallRating > 5 ? parseFloat((rc.overallRating / 20).toFixed(1)) : rc.overallRating,
+                attendance: {
+                    ...rc.attendance,
+                    attendanceScore: rc.attendance.attendanceScore > 5 ? Math.round(rc.attendance.attendanceScore / 2) : rc.attendance.attendanceScore, // Legacy was 0-10
+                    commitmentScore: rc.attendance.commitmentScore > 5 ? Math.round(rc.attendance.commitmentScore / 2) : rc.attendance.commitmentScore
+                },
+                ratingsSummary: {
+                    ...rc.ratingsSummary,
+                    applicationScore: rc.ratingsSummary.applicationScore > 5 ? Math.round(rc.ratingsSummary.applicationScore / 2) : rc.ratingsSummary.applicationScore,
+                    behaviourScore: rc.ratingsSummary.behaviourScore > 5 ? Math.round(rc.ratingsSummary.behaviourScore / 2) : rc.ratingsSummary.behaviourScore,
+                }
+            })) || []
+        } as Player;
+    });
+
+    setPlayers(sanitizedPlayers);
     setCoaches(fetchedCoaches.length > 0 ? fetchedCoaches : MOCK_COACHES);
     setTeams(fetchedTeams.length > 0 ? fetchedTeams : MOCK_TEAMS);
     setTeamLogo(fetchedLogo);

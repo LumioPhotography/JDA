@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserRole } from '../types';
-import { Shield, KeyRound, User as UserIcon, Lock } from 'lucide-react';
+import { Shield, KeyRound, User as UserIcon, Lock, ArrowRight } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (role: UserRole, id: string) => void;
@@ -21,12 +21,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, teamLogo }) => {
 
   const handleCoachLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Pass the entered password to the main App component to validate against the list of coaches
     onLogin(UserRole.COACH, coachPass);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950 p-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-zinc-950 p-4 relative overflow-hidden font-sans">
       
       {/* Background decoration */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
@@ -38,36 +37,44 @@ const Login: React.FC<LoginProps> = ({ onLogin, teamLogo }) => {
         
         {/* Header */}
         <div className="bg-black p-8 text-center border-b-4 border-teal-500">
-          <div className="mx-auto w-40 h-40 mb-6 relative">
+          <div className="mx-auto w-32 h-32 mb-6 relative">
             <div className="w-full h-full rounded-full border-4 border-teal-500 shadow-2xl bg-black overflow-hidden flex items-center justify-center">
-               <img src={teamLogo} alt="Academy Logo" className="w-full h-full object-cover" />
+               {teamLogo ? (
+                 <img src={teamLogo} alt="Academy Logo" className="w-full h-full object-cover" />
+               ) : (
+                 <Shield size={48} className="text-white" />
+               )}
             </div>
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">JDA ACADEMY</h1>
-          <p className="text-teal-500 text-xs font-bold tracking-widest uppercase mt-2">Player Performance Portal</p>
+          <h1 className="text-2xl font-black text-white tracking-tighter brand-font italic">
+            JDA <span className="text-teal-500">COACHING</span>
+          </h1>
+          <p className="text-gray-400 text-[10px] font-bold tracking-[0.2em] uppercase mt-2">
+            & ACADEMY PORTAL
+          </p>
         </div>
 
         {/* Tabs */}
         <div className="flex border-b border-gray-100">
           <button
             onClick={() => { setActiveTab('parent'); setError(''); }}
-            className={`flex-1 py-4 text-sm font-bold transition-colors ${
+            className={`flex-1 py-4 text-xs font-bold transition-all uppercase tracking-wider ${
               activeTab === 'parent' 
                 ? 'text-black border-b-2 border-teal-500 bg-gray-50' 
-                : 'text-gray-400 hover:text-gray-600'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
             }`}
           >
-            PARENT LOGIN
+            Player Login
           </button>
           <button
             onClick={() => { setActiveTab('coach'); setError(''); }}
-            className={`flex-1 py-4 text-sm font-bold transition-colors ${
+            className={`flex-1 py-4 text-xs font-bold transition-all uppercase tracking-wider ${
               activeTab === 'coach' 
                 ? 'text-black border-b-2 border-teal-500 bg-gray-50' 
-                : 'text-gray-400 hover:text-gray-600'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
             }`}
           >
-            COACH PORTAL
+            Coach Portal
           </button>
         </div>
 
@@ -80,18 +87,18 @@ const Login: React.FC<LoginProps> = ({ onLogin, teamLogo }) => {
           )}
 
           {activeTab === 'parent' ? (
-            <form onSubmit={handleParentLogin} className="space-y-5">
+            <form onSubmit={handleParentLogin} className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
                   Player Name
                 </label>
-                <div className="relative">
-                  <UserIcon className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                <div className="relative group">
+                  <UserIcon className="absolute left-3 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-teal-500 transition-colors" />
                   <input
                     type="text"
                     required
                     placeholder="e.g. Luke Skehill"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all font-medium"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-gray-800 text-sm"
                     value={playerId}
                     onChange={(e) => setPlayerId(e.target.value)}
                   />
@@ -102,59 +109,56 @@ const Login: React.FC<LoginProps> = ({ onLogin, teamLogo }) => {
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
                   Access Code
                 </label>
-                <div className="relative">
-                  <KeyRound className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                <div className="relative group">
+                  <KeyRound className="absolute left-3 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-teal-500 transition-colors" />
                   <input
                     type="password"
                     required
                     placeholder="••••"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all font-medium"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-gray-800 text-sm"
                     value={accessCode}
                     onChange={(e) => setAccessCode(e.target.value)}
                   />
                 </div>
-                <p className="text-xs text-gray-400 mt-3 text-center">
-                   Try "Luke Skehill" with code "1234"
-                </p>
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-black hover:bg-zinc-800 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-[0.99] flex items-center justify-center gap-2 border border-black hover:border-teal-500/50"
+                className="w-full bg-black hover:bg-zinc-800 text-white font-black py-4 rounded-xl shadow-lg transition-all transform active:scale-[0.99] flex items-center justify-center gap-2 border-2 border-transparent hover:border-teal-500 uppercase tracking-wide text-sm"
               >
-                VIEW REPORT CARD
+                View Report Card <ArrowRight size={16} />
               </button>
             </form>
           ) : (
-            <form onSubmit={handleCoachLogin} className="space-y-5">
+            <form onSubmit={handleCoachLogin} className="space-y-5 animate-in fade-in slide-in-from-left-4 duration-300">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
                   Coach Password
                 </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                <div className="relative group">
+                  <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-teal-500 transition-colors" />
                   <input
                     type="password"
                     required
                     placeholder="Enter password"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all font-medium"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-gray-800 text-sm"
                     value={coachPass}
                     onChange={(e) => setCoachPass(e.target.value)}
                   />
                 </div>
-                <p className="text-xs text-gray-400 mt-3 text-center">
-                   Default Admin Password: "admin"
-                </p>
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-[0.99]"
+                className="w-full bg-teal-600 hover:bg-teal-700 text-white font-black py-4 rounded-xl shadow-lg transition-all transform active:scale-[0.99] flex items-center justify-center gap-2 uppercase tracking-wide text-sm"
               >
-                ACCESS DASHBOARD
+                Access Dashboard <ArrowRight size={16} />
               </button>
             </form>
           )}
+        </div>
+        <div className="bg-gray-50 p-4 text-center border-t border-gray-100">
+             <p className="text-[10px] text-gray-400 font-bold uppercase">v2.0 • JDA Elite Performance</p>
         </div>
       </div>
     </div>
