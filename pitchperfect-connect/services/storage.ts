@@ -9,10 +9,6 @@ import { MOCK_PLAYERS, MOCK_COACHES, TEAM_LOGO_URL as DEFAULT_LOGO } from '../co
 export const storage = {
   
   // --- Real-Time Sync ---
-  /**
-   * Listens for ANY change in the database.
-   * When a change happens, it triggers the `onUpdate` callback.
-   */
   subscribeToUpdates: (onUpdate: () => void) => {
     const channel = supabase
       .channel('db-changes')
@@ -42,7 +38,6 @@ export const storage = {
       )
       .subscribe();
 
-    // Return a cleanup function to unsubscribe when the app closes
     return () => {
       supabase.removeChannel(channel);
     };
@@ -60,8 +55,9 @@ export const storage = {
       }
       return []; 
     } catch (e: any) {
-      // Log the actual message instead of [object Object]
-      console.warn("Supabase load error (Players):", e.message || JSON.stringify(e));
+      // Robust error extraction
+      const msg = e?.message || e?.error_description || (typeof e === 'string' ? e : JSON.stringify(e, null, 2));
+      console.warn("Supabase load error (Players):", msg);
       return [];
     }
   },
@@ -75,8 +71,9 @@ export const storage = {
       if (error) throw error;
       console.log(`Saved player: ${player.name}`);
     } catch (e: any) {
-      console.error("Error saving player:", e.message || JSON.stringify(e));
-      alert(`Failed to save to cloud: ${e.message || "Unknown error"}`);
+      const msg = e?.message || e?.error_description || JSON.stringify(e);
+      console.error("Error saving player:", msg);
+      alert(`Failed to save to cloud: ${msg}`);
     }
   },
 
@@ -92,7 +89,8 @@ export const storage = {
       }
       return []; 
     } catch (e: any) {
-      console.warn("Supabase load error (Coaches):", e.message || JSON.stringify(e));
+      const msg = e?.message || e?.error_description || (typeof e === 'string' ? e : JSON.stringify(e, null, 2));
+      console.warn("Supabase load error (Coaches):", msg);
       return [];
     }
   },
@@ -105,7 +103,8 @@ export const storage = {
       
       if (error) throw error;
     } catch (e: any) {
-      console.error("Error saving coach:", e.message || JSON.stringify(e));
+      const msg = e?.message || e?.error_description || JSON.stringify(e);
+      console.error("Error saving coach:", msg);
     }
   },
 
@@ -122,9 +121,10 @@ export const storage = {
       if (data) return data.value;
       return DEFAULT_LOGO;
     } catch (e: any) {
-      // PGRST116 is "The result contains 0 rows" - this is normal if no logo is set yet
-      if (e.code !== 'PGRST116') {
-         console.warn("Supabase load error (Logo):", e.message || JSON.stringify(e));
+      // PGRST116 is "The result contains 0 rows"
+      if (e?.code !== 'PGRST116') {
+         const msg = e?.message || e?.error_description || (typeof e === 'string' ? e : JSON.stringify(e));
+         console.warn("Supabase load error (Logo):", msg);
       }
       return DEFAULT_LOGO;
     }
@@ -136,7 +136,8 @@ export const storage = {
         .from('settings')
         .upsert({ key: 'team_logo', value: logoUrl });
     } catch (e: any) {
-      console.error("Error saving logo:", e.message || JSON.stringify(e));
+      const msg = e?.message || e?.error_description || JSON.stringify(e);
+      console.error("Error saving logo:", msg);
     }
   }
 };
