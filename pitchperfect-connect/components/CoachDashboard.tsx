@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Player, ReportCard, Stat, StatGroup, Coach, UserRole } from '../types';
 import { generateCoachFeedback } from '../services/geminiService';
-import { LogOut, Sparkles, User, Save, ChevronRight, Shield, Calendar, Brain, Activity, Zap, Footprints, Settings, Camera, Upload, Users, UserPlus, Lock } from 'lucide-react';
+import { LogOut, Sparkles, User, Save, ChevronRight, Shield, Calendar, Brain, Activity, Zap, Footprints, Settings, Camera, Upload, Users, UserPlus, Lock, HardDrive, AlertTriangle } from 'lucide-react';
 
 interface CoachDashboardProps {
   currentUser: Coach;
@@ -295,6 +295,10 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-4">
+             <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded-full">
+                 <HardDrive size={12} className="text-yellow-500" />
+                 <span className="text-[10px] font-bold text-yellow-500 uppercase tracking-wide">Device Storage Only</span>
+             </div>
              <span className="text-xs font-bold text-gray-500 hidden md:block">Hi, {currentUser.name}</span>
              <button onClick={onLogout} className="text-gray-400 hover:text-white flex items-center gap-2 text-sm font-bold uppercase transition-colors">
                <LogOut size={18} /> Sign Out
@@ -302,6 +306,14 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
           </div>
         </div>
       </nav>
+
+      {/* Warning Banner for Mobile/All users to ensure they understand sync limitations */}
+      <div className="bg-yellow-50 border-b border-yellow-100 px-4 py-2 flex items-center justify-center gap-2 text-center">
+        <AlertTriangle size={14} className="text-yellow-600" />
+        <p className="text-xs font-bold text-yellow-800">
+          Offline Mode: Changes saved to this device only. To sync across devices, a Cloud Database connection is required.
+        </p>
+      </div>
 
       <div className="flex-1 flex overflow-hidden max-w-7xl mx-auto w-full p-4 lg:p-6 gap-6">
         

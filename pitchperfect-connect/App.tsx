@@ -3,113 +3,74 @@ import Login from './components/Login';
 import ParentDashboard from './components/ParentDashboard';
 import CoachDashboard from './components/CoachDashboard';
 import { UserRole, Player, Coach } from './types';
-import { MOCK_PLAYERS, MOCK_COACHES, TEAM_LOGO_URL as DEFAULT_LOGO } from './constants';
+import { storage } from './services/storage';
+import { MOCK_PLAYERS, MOCK_COACHES } from './constants';
+import { Loader2 } from 'lucide-react';
 
 const App: React.FC = () => {
-  // Initialize players from LocalStorage
-  const [players, setPlayers] = useState<Player[]>(() => {
-    try {
-      const saved = localStorage.getItem('jda_players');
-      // Basic validation: ensure we have an array
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-           // DATA INTEGRITY CHECK:
-           // Check if this is "Old Data" missing the new 'stats' structure.
-           // If we find a report card that doesn't have a 'stats' array, we assume the data is corrupt/outdated.
-           const hasLegacyData = parsed.some((p: any) => 
-             Array.isArray(p.reportCards) && p.reportCards.some((r: any) => !r.stats || !Array.isArray(r.stats))
-           );
-
-           if (!hasLegacyData) {
-             return parsed;
-           }
-           console.warn("Legacy player data detected (missing stats). Resetting to defaults to prevent crash.");
-        }
-      }
-      return MOCK_PLAYERS;
-    } catch (e) {
-      console.error("Error loading players:", e);
-      return MOCK_PLAYERS;
-    }
-  });
-
-  // Initialize Coaches from LocalStorage
-  const [coaches, setCoaches] = useState<Coach[]>(() => {
-    try {
-      const saved = localStorage.getItem('jda_coaches');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Check if the data is stale (Admin missing password field)
-        const admin = parsed.find((c: Coach) => c.isAdmin);
-        if (admin && admin.password) {
-          return parsed;
-        }
-        console.log("Old data detected. Resetting Coach database to enable Admin login.");
-      }
-      return MOCK_COACHES;
-    } catch (e) {
-      console.error("Error loading coaches:", e);
-      return MOCK_COACHES;
-    }
-  });
-
-  // Initialize Team Logo from LocalStorage
-  const [teamLogo, setTeamLogo] = useState<string>(() => {
-    try {
-      return localStorage.getItem('jda_team_logo') || DEFAULT_LOGO;
-    } catch (e) {
-      console.error("Error loading logo:", e);
-      return DEFAULT_LOGO;
-    }
-  });
+  // State
+  const [loading, setLoading] = useState(true);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [coaches, setCoaches] = useState<Coach[]>([]);
+  const [teamLogo, setTeamLogo] = useState<string>("");
 
   const [currentUser, setCurrentUser] = useState<Coach | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loggedInPlayerId, setLoggedInPlayerId] = useState<string | null>(null);
 
-  // Persistence Effects
+  // Initial Data Load (Runs once on startup)
   useEffect(() => {
-    try {
-      localStorage.setItem('jda_players', JSON.stringify(players));
-    } catch (e) {
-      console.error("Failed to save players:", e);
-    }
-  }, [players]);
+    const loadData = async () => {
+      setLoading(true);
+      
+      // Load all data in parallel
+      const [fetchedPlayers, fetchedCoaches, fetchedLogo] = await Promise.all([
+        storage.fetchPlayers(),
+        storage.fetchCoaches(),
+        storage.fetchTeamLogo()
+      ]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('jda_coaches', JSON.stringify(coaches));
-    } catch (e) {
-      console.error("Failed to save coaches:", e);
-    }
-  }, [coaches]);
+      // If database is empty, fall back to MOCK data so the app isn't blank
+      setPlayers(fetchedPlayers.length > 0 ? fetchedPlayers : MOCK_PLAYERS);
+      setCoaches(fetchedCoaches.length > 0 ? fetchedCoaches : MOCK_COACHES);
+      setTeamLogo(fetchedLogo);
+      
+      setLoading(false);
+    };
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('jda_team_logo', teamLogo);
-    } catch (e) {
-      console.error("Failed to save team logo:", e);
-    }
-  }, [teamLogo]);
+    loadData();
+  }, []);
+
+  // --- Actions ---
 
   const handleUpdatePlayer = (updatedPlayer: Player) => {
+    // 1. Update UI immediately (Optimistic update)
     setPlayers(prev => prev.map(p => p.id === updatedPlayer.id ? updatedPlayer : p));
+    // 2. Save specifically this player to DB
+    storage.savePlayer(updatedPlayer);
   };
 
   const handleAddPlayer = (newPlayer: Player) => {
     setPlayers(prev => [...prev, newPlayer]);
+    storage.savePlayer(newPlayer);
   };
 
   const handleUpdateCoaches = (updatedCoaches: Coach[]) => {
+    // We need to figure out which coach was added/updated. 
+    // For simplicity, we just save them all individually or find the diff.
+    // In this specific app flow, we usually just add one coach at a time.
     setCoaches(updatedCoaches);
+    updatedCoaches.forEach(c => storage.saveCoach(c));
+  };
+
+  const handleUpdateTeamLogo = (newUrl: string) => {
+    setTeamLogo(newUrl);
+    storage.saveTeamLogo(newUrl);
   };
 
   const handleLogin = (role: UserRole, credentials: string) => {
     if (role === UserRole.COACH) {
-      // Credentials is the password entered
       const coach = coaches.find(c => c.password === credentials);
-      
       if (coach) {
         setCurrentUser(coach);
         setUserRole(UserRole.COACH);
@@ -119,8 +80,6 @@ const App: React.FC = () => {
     } else {
       try {
         const { playerId, accessCode } = JSON.parse(credentials);
-        
-        // Find player in the CURRENT state
         const player = players.find(p => 
           (p.name.toLowerCase() === playerId.toLowerCase() || p.id === playerId) && 
           p.accessCode === accessCode
@@ -144,6 +103,17 @@ const App: React.FC = () => {
     setCurrentUser(null);
   };
 
+  // --- Render ---
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-white gap-4">
+        <Loader2 className="animate-spin text-teal-500" size={48} />
+        <p className="text-sm font-bold tracking-widest uppercase text-gray-500">Connecting to Cloud...</p>
+      </div>
+    );
+  }
+
   if (!userRole) {
     return <Login onLogin={handleLogin} teamLogo={teamLogo} />;
   }
@@ -159,7 +129,7 @@ const App: React.FC = () => {
         onUpdateCoaches={handleUpdateCoaches}
         onLogout={handleLogout}
         teamLogo={teamLogo}
-        onUpdateTeamLogo={setTeamLogo}
+        onUpdateTeamLogo={handleUpdateTeamLogo}
       />
     );
   }
