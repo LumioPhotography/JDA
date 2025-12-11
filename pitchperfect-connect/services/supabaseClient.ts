@@ -9,7 +9,7 @@ import { createClient } from '@supabase/supabase-js';
 // The Anon Key usually starts with 'ey...'.
 
 const SUPABASE_URL = 'https://xajvdlneavikqgfflezc.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_TkSBRoU2C8tECbCMcYLP';
+const SUPABASE_ANON_KEY = 'sb_publishable_TkSBRoU2C8tECbCMcYLPaw_glCv7VBM';
 
 // We use .trim() to prevent errors from accidental whitespace during copy-paste
 export const supabase = createClient(
