@@ -5,7 +5,8 @@ import CoachDashboard from './components/CoachDashboard';
 import { UserRole, Player, Coach } from './types';
 import { storage } from './services/storage';
 import { MOCK_PLAYERS, MOCK_COACHES } from './constants';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle, Wifi } from 'lucide-react';
+import { supabase } from './services/supabaseClient';
 
 const App: React.FC = () => {
   // State
@@ -13,40 +14,63 @@ const App: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [teamLogo, setTeamLogo] = useState<string>("");
+  const [configError, setConfigError] = useState<string | null>(null);
 
   const [currentUser, setCurrentUser] = useState<Coach | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loggedInPlayerId, setLoggedInPlayerId] = useState<string | null>(null);
 
-  // Initial Data Load (Runs once on startup)
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      
-      // Load all data in parallel
-      const [fetchedPlayers, fetchedCoaches, fetchedLogo] = await Promise.all([
-        storage.fetchPlayers(),
-        storage.fetchCoaches(),
-        storage.fetchTeamLogo()
-      ]);
+  // Helper to fetch all data
+  const fetchData = async () => {
+    const [fetchedPlayers, fetchedCoaches, fetchedLogo] = await Promise.all([
+      storage.fetchPlayers(),
+      storage.fetchCoaches(),
+      storage.fetchTeamLogo()
+    ]);
 
-      // If database is empty, fall back to MOCK data so the app isn't blank
-      setPlayers(fetchedPlayers.length > 0 ? fetchedPlayers : MOCK_PLAYERS);
-      setCoaches(fetchedCoaches.length > 0 ? fetchedCoaches : MOCK_COACHES);
-      setTeamLogo(fetchedLogo);
-      
+    setPlayers(fetchedPlayers.length > 0 ? fetchedPlayers : MOCK_PLAYERS);
+    setCoaches(fetchedCoaches.length > 0 ? fetchedCoaches : MOCK_COACHES);
+    setTeamLogo(fetchedLogo);
+  };
+
+  // Initial Data Load & Real-time Subscription
+  useEffect(() => {
+    const init = async () => {
+      setLoading(true);
+
+      // 1. Check if keys are configured
+      // We check if the URL still contains the placeholder text
+      // @ts-ignore - accessing internal property to check config
+      const url = supabase.supabaseUrl; 
+      if (url.includes('YOUR_PROJECT_ID')) {
+        setConfigError("Supabase Configuration Missing. Please open 'services/supabaseClient.ts' and enter your Project URL and Anon Key.");
+        setLoading(false);
+        return;
+      }
+
+      // 2. Load initial data
+      await fetchData();
       setLoading(false);
+
+      // 3. Subscribe to Real-time Changes
+      const unsubscribe = storage.subscribeToUpdates(() => {
+        console.log("Remote change detected, refreshing data...");
+        fetchData();
+      });
+
+      return () => {
+        unsubscribe();
+      };
     };
 
-    loadData();
+    init();
   }, []);
 
   // --- Actions ---
 
   const handleUpdatePlayer = (updatedPlayer: Player) => {
-    // 1. Update UI immediately (Optimistic update)
+    // Optimistic Update (Update UI immediately)
     setPlayers(prev => prev.map(p => p.id === updatedPlayer.id ? updatedPlayer : p));
-    // 2. Save specifically this player to DB
     storage.savePlayer(updatedPlayer);
   };
 
@@ -56,9 +80,6 @@ const App: React.FC = () => {
   };
 
   const handleUpdateCoaches = (updatedCoaches: Coach[]) => {
-    // We need to figure out which coach was added/updated. 
-    // For simplicity, we just save them all individually or find the diff.
-    // In this specific app flow, we usually just add one coach at a time.
     setCoaches(updatedCoaches);
     updatedCoaches.forEach(c => storage.saveCoach(c));
   };
@@ -105,11 +126,26 @@ const App: React.FC = () => {
 
   // --- Render ---
 
+  if (configError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-white p-8 text-center">
+        <AlertTriangle className="text-red-500 mb-4" size={64} />
+        <h1 className="text-2xl font-black mb-2">Configuration Required</h1>
+        <p className="max-w-md text-gray-400 mb-6">{configError}</p>
+        <div className="bg-zinc-900 p-4 rounded-lg text-left text-xs font-mono text-teal-400 border border-zinc-800">
+           services/supabaseClient.ts
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-white gap-4">
         <Loader2 className="animate-spin text-teal-500" size={48} />
-        <p className="text-sm font-bold tracking-widest uppercase text-gray-500">Connecting to Cloud...</p>
+        <p className="text-sm font-bold tracking-widest uppercase text-gray-500 flex items-center gap-2">
+          <Wifi size={16} /> Connecting to Cloud...
+        </p>
       </div>
     );
   }

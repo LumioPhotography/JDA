@@ -4,12 +4,50 @@ import { MOCK_PLAYERS, MOCK_COACHES, TEAM_LOGO_URL as DEFAULT_LOGO } from '../co
 
 /**
  * StorageService (Supabase Edition)
- * 
- * Instead of saving the whole array at once, we now save individual records
- * to ensure multiple users don't overwrite each other's work.
+ * Includes Real-Time Subscription logic.
  */
 export const storage = {
   
+  // --- Real-Time Sync ---
+  /**
+   * Listens for ANY change in the database.
+   * When a change happens, it triggers the `onUpdate` callback.
+   */
+  subscribeToUpdates: (onUpdate: () => void) => {
+    const channel = supabase
+      .channel('db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'players' },
+        (payload) => {
+          console.log('Player update detected:', payload);
+          onUpdate();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'coaches' },
+        (payload) => {
+          console.log('Coach update detected:', payload);
+          onUpdate();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'settings' },
+        (payload) => {
+          console.log('Settings update detected:', payload);
+          onUpdate();
+        }
+      )
+      .subscribe();
+
+    // Return a cleanup function to unsubscribe when the app closes
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
   // --- Players ---
   
   fetchPlayers: async (): Promise<Player[]> => {
@@ -18,31 +56,26 @@ export const storage = {
       if (error) throw error;
       
       if (data && data.length > 0) {
-        // Map the database rows back to Player objects
         return data.map((row: any) => row.data as Player);
       }
-      return []; // Return empty if DB is empty (App will handle defaults)
+      return []; 
     } catch (e) {
       console.error("Supabase load error:", e);
       return [];
     }
   },
 
-  /**
-   * Saves or Updates a SINGLE player.
-   * This is efficient and prevents overwriting other players.
-   */
   savePlayer: async (player: Player) => {
     try {
       const { error } = await supabase
         .from('players')
-        .upsert({ id: player.id, data: player }); // 'data' column holds the JSON
+        .upsert({ id: player.id, data: player }); 
       
       if (error) throw error;
       console.log(`Saved player: ${player.name}`);
     } catch (e) {
       console.error("Error saving player:", e);
-      alert("Failed to save to cloud. Check console.");
+      alert("Failed to save to cloud. Check console for details.");
     }
   },
 
