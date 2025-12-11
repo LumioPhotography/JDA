@@ -59,8 +59,9 @@ export const storage = {
         return data.map((row: any) => row.data as Player);
       }
       return []; 
-    } catch (e) {
-      console.error("Supabase load error:", e);
+    } catch (e: any) {
+      // Log the actual message instead of [object Object]
+      console.warn("Supabase load error (Players):", e.message || JSON.stringify(e));
       return [];
     }
   },
@@ -73,9 +74,9 @@ export const storage = {
       
       if (error) throw error;
       console.log(`Saved player: ${player.name}`);
-    } catch (e) {
-      console.error("Error saving player:", e);
-      alert("Failed to save to cloud. Check console for details.");
+    } catch (e: any) {
+      console.error("Error saving player:", e.message || JSON.stringify(e));
+      alert(`Failed to save to cloud: ${e.message || "Unknown error"}`);
     }
   },
 
@@ -90,8 +91,8 @@ export const storage = {
         return data.map((row: any) => row.data as Coach);
       }
       return []; 
-    } catch (e) {
-      console.error("Error loading coaches:", e);
+    } catch (e: any) {
+      console.warn("Supabase load error (Coaches):", e.message || JSON.stringify(e));
       return [];
     }
   },
@@ -103,8 +104,8 @@ export const storage = {
         .upsert({ id: coach.id, data: coach });
       
       if (error) throw error;
-    } catch (e) {
-      console.error("Error saving coach:", e);
+    } catch (e: any) {
+      console.error("Error saving coach:", e.message || JSON.stringify(e));
     }
   },
 
@@ -120,7 +121,11 @@ export const storage = {
       
       if (data) return data.value;
       return DEFAULT_LOGO;
-    } catch (e) {
+    } catch (e: any) {
+      // PGRST116 is "The result contains 0 rows" - this is normal if no logo is set yet
+      if (e.code !== 'PGRST116') {
+         console.warn("Supabase load error (Logo):", e.message || JSON.stringify(e));
+      }
       return DEFAULT_LOGO;
     }
   },
@@ -130,8 +135,8 @@ export const storage = {
       await supabase
         .from('settings')
         .upsert({ key: 'team_logo', value: logoUrl });
-    } catch (e) {
-      console.error("Error saving logo:", e);
+    } catch (e: any) {
+      console.error("Error saving logo:", e.message || JSON.stringify(e));
     }
   }
 };

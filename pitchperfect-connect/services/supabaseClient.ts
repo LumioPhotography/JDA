@@ -1,18 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
 // ------------------------------------------------------------------
-// HOW TO FIND YOUR KEYS:
-// 1. Go to your Supabase Dashboard.
-// 2. Click on "Settings" (Gear icon ⚙️ at the bottom left).
-// 3. Click on "API".
-// 4. Copy the "Project URL" and paste it below.
-// 5. Look for "Project API Keys" -> "anon" (public). Copy that and paste it below.
-// 
-// ⚠️ WARNING: Use the 'anon' key. Do NOT use the 'service_role' (secret) key!
+// CONFIGURATION
 // ------------------------------------------------------------------
 
-// REPLACE THE TEXT INSIDE THE QUOTES BELOW:
-const SUPABASE_URL = 'https://xajvdlneavikqgfflezc.supabase.co'; 
-const SUPABASE_ANON_KEY = 'sb_publishable_TkSBRoU2C8tECbCMcYLPaw_glCv7VBM';
+// Ensure these are your valid Supabase Project URL and Anon Key.
+// The URL usually ends in '.supabase.co'.
+// The Anon Key usually starts with 'ey...'.
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL = 'https://xajvdlneavikqgfflezc.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_TkSBRoU2C8tECbCMcYLP';
+
+// We use .trim() to prevent errors from accidental whitespace during copy-paste
+export const supabase = createClient(
+  (SUPABASE_URL || '').trim(), 
+  (SUPABASE_ANON_KEY || '').trim()
+);

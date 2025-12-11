@@ -5,8 +5,7 @@ import CoachDashboard from './components/CoachDashboard';
 import { UserRole, Player, Coach } from './types';
 import { storage } from './services/storage';
 import { MOCK_PLAYERS, MOCK_COACHES } from './constants';
-import { Loader2, AlertTriangle, Wifi } from 'lucide-react';
-import { supabase } from './services/supabaseClient';
+import { Loader2, Wifi } from 'lucide-react';
 
 const App: React.FC = () => {
   // State
@@ -14,7 +13,6 @@ const App: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [teamLogo, setTeamLogo] = useState<string>("");
-  const [configError, setConfigError] = useState<string | null>(null);
 
   const [currentUser, setCurrentUser] = useState<Coach | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
@@ -22,6 +20,8 @@ const App: React.FC = () => {
 
   // Helper to fetch all data
   const fetchData = async () => {
+    // We attempt to fetch from Supabase. 
+    // If keys are missing/invalid, storage service returns [] and we fall back to MOCK data.
     const [fetchedPlayers, fetchedCoaches, fetchedLogo] = await Promise.all([
       storage.fetchPlayers(),
       storage.fetchCoaches(),
@@ -38,21 +38,12 @@ const App: React.FC = () => {
     const init = async () => {
       setLoading(true);
 
-      // 1. Check if keys are configured
-      // We check if the URL still contains the placeholder text
-      // @ts-ignore - accessing internal property to check config
-      const url = supabase.supabaseUrl; 
-      if (url.includes('YOUR_PROJECT_ID')) {
-        setConfigError("Supabase Configuration Missing. Please open 'services/supabaseClient.ts' and enter your Project URL and Anon Key.");
-        setLoading(false);
-        return;
-      }
-
-      // 2. Load initial data
+      // 1. Load initial data
       await fetchData();
       setLoading(false);
 
-      // 3. Subscribe to Real-time Changes
+      // 2. Subscribe to Real-time Changes
+      // This will only work if the API keys are valid. If not, it just won't receive updates.
       const unsubscribe = storage.subscribeToUpdates(() => {
         console.log("Remote change detected, refreshing data...");
         fetchData();
@@ -126,22 +117,9 @@ const App: React.FC = () => {
 
   // --- Render ---
 
-  if (configError) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-white p-8 text-center">
-        <AlertTriangle className="text-red-500 mb-4" size={64} />
-        <h1 className="text-2xl font-black mb-2">Configuration Required</h1>
-        <p className="max-w-md text-gray-400 mb-6">{configError}</p>
-        <div className="bg-zinc-900 p-4 rounded-lg text-left text-xs font-mono text-teal-400 border border-zinc-800">
-           services/supabaseClient.ts
-        </div>
-      </div>
-    );
-  }
-
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-white gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-white gap-6">
         <Loader2 className="animate-spin text-teal-500" size={48} />
         <p className="text-sm font-bold tracking-widest uppercase text-gray-500 flex items-center gap-2">
           <Wifi size={16} /> Connecting to Cloud...
