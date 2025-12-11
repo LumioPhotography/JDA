@@ -158,7 +158,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, teamLogo }) => {
           )}
         </div>
         <div className="bg-gray-50 p-4 text-center border-t border-gray-100">
-             <p className="text-[10px] text-gray-400 font-bold uppercase">v2.0 • JDA Elite Performance</p>
+             <p className="text-[10px] text-gray-400 font-bold uppercase">v2.1 • JDA Elite Performance</p>
         </div>
       </div>
     </div>

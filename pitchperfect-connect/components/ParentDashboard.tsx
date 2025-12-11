@@ -88,14 +88,14 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ player, coaches, onLo
           </p>
           
           {view === 'dashboard' && currentReport && (
-            <div className="flex gap-4 w-full justify-center animate-in fade-in slide-in-from-bottom-4">
-                {['Technical', 'Tactical'].map(g => {
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 w-full animate-in fade-in slide-in-from-bottom-4">
+                {['Technical', 'Tactical', 'Physical', 'Psychological'].map(g => {
                     const stats = currentReport.stats.filter(s => s.group === g);
                     const avg = stats.length ? (stats.reduce((a,b)=>a+b.value,0)/stats.length).toFixed(1) : '-';
                     return (
-                        <div key={g} className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 flex-1 max-w-[100px]">
-                            <span className="block text-[8px] text-gray-400 uppercase font-bold tracking-wider mb-1">{g}</span>
-                            <span className="text-xl font-black text-white">{avg}</span>
+                        <div key={g} className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 flex flex-col items-center justify-center">
+                            <span className="block text-[8px] text-gray-400 uppercase font-bold tracking-wider mb-1 text-center">{g.substring(0, 4)}</span>
+                            <span className={`text-lg font-black ${parseFloat(avg) >= 4.5 ? 'text-[#D4AF37]' : 'text-white'}`}>{avg}</span>
                         </div>
                     )
                 })}
@@ -142,7 +142,9 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ player, coaches, onLo
                             <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
                             <Line type="monotone" dataKey="Technical" stroke="#3b82f6" strokeWidth={3} dot={{r: 4}} />
                             <Line type="monotone" dataKey="Tactical" stroke="#a855f7" strokeWidth={3} dot={{r: 4}} />
-                            <Line type="monotone" dataKey="Physical" stroke="#f59e0b" strokeWidth={3} dot={{r: 4}} />
+                            {/* Metallic Gold for Physical */}
+                            <Line type="monotone" dataKey="Physical" stroke="#D4AF37" strokeWidth={3} dot={{r: 4}} /> 
+                            <Line type="monotone" dataKey="Psychological" stroke="#10b981" strokeWidth={3} dot={{r: 4}} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>

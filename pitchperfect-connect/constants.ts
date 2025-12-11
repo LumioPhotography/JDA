@@ -45,9 +45,8 @@ const createStats = (
 };
 
 export const MOCK_TEAMS: Team[] = [
-  { id: 't1', name: 'U-8 Teals' },
-  { id: 't2', name: 'U-10 Reds' },
-  { id: 't3', name: 'Elite Squad' }
+  { id: 'U10 Reds', name: 'U10 Reds' },
+  { id: 'U10 Blues', name: 'U10 Blues' }
 ];
 
 export const MOCK_PLAYERS: Player[] = [
@@ -55,7 +54,7 @@ export const MOCK_PLAYERS: Player[] = [
     id: 'p1',
     name: 'Luke Skehill',
     branch: 'ACADEMY',
-    teamId: 'U-8 Teals',
+    teamId: 'U10 Reds',
     position: 'Midfield',
     jerseyNumber: 7,
     imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Luke&backgroundColor=b6e3f4',
@@ -64,7 +63,7 @@ export const MOCK_PLAYERS: Player[] = [
       {
         id: 'rc_2526_q2',
         season: '2025/26',
-        quarter: 'Term 2',
+        quarter: 'Winter Term',
         date: '2025-12-12',
         overallRating: 4.2,
         attendance: {
@@ -89,6 +88,7 @@ export const MOCK_PLAYERS: Player[] = [
           coachComment: "A model student."
         },
         finalSummary: "Luke has had a fantastic term. His energy on the pitch is infectious and he is becoming a real leader for the U-8s. He needs to continue working on checking his shoulder before receiving.",
+        coachFooterNote: "Keep up the great work over the holidays, Luke!",
         targets: [
           { id: 'tg1', description: 'Score 5 goals with left foot', achieved: false },
           { id: 'tg2', description: 'Lead the warm up', achieved: true }
@@ -100,7 +100,7 @@ export const MOCK_PLAYERS: Player[] = [
     id: 'p2',
     name: 'Mason Mount-Jr',
     branch: 'ACADEMY',
-    teamId: 'U-8 Teals',
+    teamId: 'U10 Blues',
     position: 'Forward',
     jerseyNumber: 10,
     imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mason&backgroundColor=c0aede',
@@ -121,7 +121,7 @@ export const MOCK_PLAYERS: Player[] = [
 export const MOCK_COACHES: Coach[] = [
   {
     id: 'coach_admin',
-    name: 'Head Coach JDA',
+    name: 'Head Coach',
     role: UserRole.COACH,
     email: 'headcoach@jda.com',
     instagramHandle: 'jda_academy',

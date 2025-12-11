@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ReportCard, Player, StatGroup } from '../types';
-import { Trophy, CheckCircle2, User, Footprints, Brain, Zap, Activity, MessageSquare, Send, Calendar, Target, AlertCircle } from 'lucide-react';
+import { Trophy, CheckCircle2, User, Footprints, Brain, Zap, Activity, MessageSquare, Send, Calendar, Target, AlertCircle, Star, PenTool } from 'lucide-react';
 import { askCoachAI, getDrillSuggestion } from '../services/geminiService';
 
 interface ReportCardViewProps {
@@ -36,8 +36,15 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, onB
     if (val <= 2) return 'bg-red-500';
     if (val === 3) return 'bg-orange-500';
     if (val === 4) return 'bg-teal-500';
-    return 'bg-yellow-400';
+    return 'bg-[#D4AF37]'; // Metallic Gold
   };
+  
+  const getScoreColor = (val: number) => {
+     if (val <= 2) return 'text-red-500';
+    if (val === 3) return 'text-orange-500';
+    if (val === 4) return 'text-teal-500';
+    return 'text-[#D4AF37]'; // Metallic Gold
+  }
 
   const getGroupIcon = (group: StatGroup) => {
      switch (group) {
@@ -84,11 +91,11 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, onB
              </h3>
              <div className="grid grid-cols-2 gap-4 mb-4">
                  <div className="text-center bg-white/5 rounded-xl p-4 border border-white/10">
-                     <span className={`block text-3xl font-black ${reportCard.ratingsSummary?.applicationScore >= 4 ? 'text-teal-400' : 'text-white'}`}>{reportCard.ratingsSummary?.applicationScore}/5</span>
+                     <span className={`block text-3xl font-black ${getScoreColor(reportCard.ratingsSummary?.applicationScore)}`}>{reportCard.ratingsSummary?.applicationScore}/5</span>
                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mt-2 block">Application</span>
                  </div>
                  <div className="text-center bg-white/5 rounded-xl p-4 border border-white/10">
-                     <span className={`block text-3xl font-black ${reportCard.ratingsSummary?.behaviourScore >= 4 ? 'text-teal-400' : 'text-white'}`}>{reportCard.ratingsSummary?.behaviourScore}/5</span>
+                     <span className={`block text-3xl font-black ${getScoreColor(reportCard.ratingsSummary?.behaviourScore)}`}>{reportCard.ratingsSummary?.behaviourScore}/5</span>
                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mt-2 block">Behaviour</span>
                  </div>
              </div>
@@ -100,8 +107,23 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, onB
             <h3 className="font-black text-black mb-3 text-sm uppercase tracking-widest flex items-center gap-2"><User size={16} /> Coach's Summary</h3>
             <p className="text-gray-800 leading-7 font-medium text-justify">{reportCard.finalSummary}</p>
         </div>
+        
+        {/* 3. Key Strengths (New) */}
+        {reportCard.strengths && reportCard.strengths.length > 0 && (
+             <div className="bg-teal-50 rounded-xl shadow-sm border border-teal-100 p-6">
+                <h3 className="text-sm font-black text-teal-800 uppercase tracking-widest mb-4 flex items-center gap-2"><Star size={16} /> Key Strengths</h3>
+                <div className="grid md:grid-cols-3 gap-4">
+                    {reportCard.strengths.slice(0, 3).map((strength, i) => (
+                        <div key={i} className="bg-white p-4 rounded-lg shadow-sm border border-teal-100 flex items-center gap-3">
+                            <div className="bg-teal-100 text-teal-600 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs">{i+1}</div>
+                            <span className="font-bold text-gray-800 text-sm">{strength}</span>
+                        </div>
+                    ))}
+                </div>
+             </div>
+        )}
 
-        {/* 3. Detailed Stats Bars */}
+        {/* 4. Detailed Stats Bars */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {['Technical', 'Tactical', 'Physical', 'Psychological'].map((g) => {
                 const group = g as StatGroup;
@@ -109,11 +131,17 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, onB
                 if(!stats.length) return null;
                 const headerColor = group === 'Technical' ? 'text-blue-900' : group === 'Tactical' ? 'text-purple-900' : group === 'Physical' ? 'text-amber-900' : 'text-teal-900';
                 
+                // Calculate Section Average
+                const avg = (stats.reduce((acc, curr) => acc + curr.value, 0) / stats.length).toFixed(1);
+
                 return (
                     <div key={group} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
-                            <span className={headerColor}>{getGroupIcon(group)}</span>
-                            <h3 className={`font-black uppercase tracking-wide text-sm ${headerColor}`}>{group}</h3>
+                        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                                <span className={headerColor}>{getGroupIcon(group)}</span>
+                                <h3 className={`font-black uppercase tracking-wide text-sm ${headerColor}`}>{group}</h3>
+                            </div>
+                            <span className="bg-black text-white text-xs font-bold px-2 py-1 rounded">{avg}</span>
                         </div>
                         <div className="p-5 space-y-4">
                             {stats.map(stat => (
@@ -132,8 +160,16 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, onB
                 )
             })}
         </div>
+        
+        {/* Grading Key */}
+        <div className="flex flex-wrap justify-center gap-4 py-4 border-t border-b border-gray-200">
+             <div className="flex items-center gap-2"><div className="w-3 h-3 bg-[#D4AF37] rounded-full"></div><span className="text-[10px] uppercase font-bold text-gray-500">5 - Outstanding</span></div>
+             <div className="flex items-center gap-2"><div className="w-3 h-3 bg-teal-500 rounded-full"></div><span className="text-[10px] uppercase font-bold text-gray-500">4 - Very Strong</span></div>
+             <div className="flex items-center gap-2"><div className="w-3 h-3 bg-orange-500 rounded-full"></div><span className="text-[10px] uppercase font-bold text-gray-500">3 - Meeting Exp.</span></div>
+             <div className="flex items-center gap-2"><div className="w-3 h-3 bg-red-500 rounded-full"></div><span className="text-[10px] uppercase font-bold text-gray-500">1-2 - Developing</span></div>
+        </div>
 
-        {/* 4. Improvements (Clickable) */}
+        {/* 5. Improvements (Clickable) */}
         <div className="bg-white rounded-xl shadow-sm border border-amber-100 p-6">
             <h3 className="text-sm font-black text-amber-800 uppercase tracking-widest mb-4 flex items-center gap-2"><AlertCircle size={16} /> Improvements (Click for Drills)</h3>
             <div className="grid md:grid-cols-2 gap-4">
@@ -148,7 +184,7 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, onB
             </div>
         </div>
 
-        {/* 5. Targets */}
+        {/* 6. Targets */}
         {reportCard.targets && reportCard.targets.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm border border-teal-100 p-6">
                  <h3 className="text-sm font-black text-teal-800 uppercase tracking-widest mb-4 flex items-center gap-2"><Target size={16} /> Targets</h3>
@@ -162,6 +198,15 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, onB
                          </div>
                      ))}
                  </div>
+            </div>
+        )}
+        
+        {/* 7. Coach Footer Note (New) */}
+        {reportCard.coachFooterNote && (
+            <div className="bg-black text-white p-6 rounded-xl shadow-lg relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/20 rounded-full blur-2xl"></div>
+                 <h3 className="text-xs font-black text-teal-400 uppercase tracking-widest mb-2 flex items-center gap-2 relative z-10"><PenTool size={14} /> Coach Note</h3>
+                 <p className="font-medium italic relative z-10 text-sm">"{reportCard.coachFooterNote}"</p>
             </div>
         )}
 

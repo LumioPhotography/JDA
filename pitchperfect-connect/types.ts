@@ -23,7 +23,7 @@ export interface AttendanceRecord {
 export interface RatingsSummary {
   applicationScore: number; // 1-5
   behaviourScore: number; // 1-5
-  coachComment: string;
+  coachComment: string; // Top comment
 }
 
 export interface Improvements {
@@ -40,7 +40,7 @@ export interface Target {
 export interface ReportCard {
   id: string;
   season: string;
-  quarter: string;
+  quarter: string; // e.g. "Winter Term"
   date: string;
   
   // New Structure
@@ -49,7 +49,8 @@ export interface ReportCard {
   strengths: string[]; 
   improvements: Improvements;
   ratingsSummary: RatingsSummary;
-  finalSummary: string;
+  finalSummary: string; // The main paragraph
+  coachFooterNote?: string; // New: Little note at the bottom
   targets: Target[];
   
   // Computed helpers
