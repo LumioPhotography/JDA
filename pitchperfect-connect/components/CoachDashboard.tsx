@@ -43,25 +43,26 @@ interface DraftData {
   authorCoachId?: string;
 }
 
-// --- TACTICAL POSITIONS CONFIGURATION ---
+// --- TACTICAL POSITIONS CONFIGURATION (HORIZONTAL) ---
+// GK on LEFT, STRIKER on RIGHT
 const TACTICAL_POSITIONS = [
-  { value: 'GK', label: 'Goalkeeper (GK)', coords: { top: '88%', left: '48%' } },
-  { value: 'LB', label: 'Left Back (LB)', coords: { top: '75%', left: '15%' } },
-  { value: 'CB-L', label: 'Centre Back L (CB)', coords: { top: '78%', left: '35%' } },
-  { value: 'CB-R', label: 'Centre Back R (CB)', coords: { top: '78%', left: '61%' } },
-  { value: 'RB', label: 'Right Back (RB)', coords: { top: '75%', left: '81%' } },
-  { value: 'LWB', label: 'Left Wing Back (LWB)', coords: { top: '60%', left: '10%' } },
-  { value: 'RWB', label: 'Right Wing Back (RWB)', coords: { top: '60%', left: '86%' } },
-  { value: 'CDM', label: 'Defensive Mid (CDM)', coords: { top: '60%', left: '48%' } },
-  { value: 'CM-L', label: 'Centre Mid L (CM)', coords: { top: '45%', left: '35%' } },
-  { value: 'CM-R', label: 'Centre Mid R (CM)', coords: { top: '45%', left: '61%' } },
-  { value: 'CAM', label: 'Attacking Mid (CAM)', coords: { top: '30%', left: '48%' } },
-  { value: 'LM', label: 'Left Mid (LM)', coords: { top: '45%', left: '15%' } },
-  { value: 'RM', label: 'Right Mid (RM)', coords: { top: '45%', left: '81%' } },
-  { value: 'LW', label: 'Left Wing (LW)', coords: { top: '20%', left: '15%' } },
-  { value: 'RW', label: 'Right Wing (RW)', coords: { top: '20%', left: '81%' } },
-  { value: 'ST', label: 'Striker (ST)', coords: { top: '12%', left: '48%' } },
-  { value: 'SUB', label: 'Substitute / Bench', coords: { top: '0', left: '0' } }, // Special handling
+  { value: 'GK', label: 'Goalkeeper (GK)', coords: { left: '8%', top: '50%' } },
+  { value: 'LB', label: 'Left Back (LB)', coords: { left: '25%', top: '15%' } },
+  { value: 'CB-L', label: 'Centre Back L (CB)', coords: { left: '20%', top: '35%' } },
+  { value: 'CB-R', label: 'Centre Back R (CB)', coords: { left: '20%', top: '65%' } },
+  { value: 'RB', label: 'Right Back (RB)', coords: { left: '25%', top: '85%' } },
+  { value: 'LWB', label: 'Left Wing Back (LWB)', coords: { left: '35%', top: '10%' } },
+  { value: 'RWB', label: 'Right Wing Back (RWB)', coords: { left: '35%', top: '90%' } },
+  { value: 'CDM', label: 'Defensive Mid (CDM)', coords: { left: '35%', top: '50%' } },
+  { value: 'CM-L', label: 'Centre Mid L (CM)', coords: { left: '50%', top: '35%' } },
+  { value: 'CM-R', label: 'Centre Mid R (CM)', coords: { left: '50%', top: '65%' } },
+  { value: 'CAM', label: 'Attacking Mid (CAM)', coords: { left: '65%', top: '50%' } },
+  { value: 'LM', label: 'Left Mid (LM)', coords: { left: '50%', top: '15%' } },
+  { value: 'RM', label: 'Right Mid (RM)', coords: { left: '50%', top: '85%' } },
+  { value: 'LW', label: 'Left Wing (LW)', coords: { left: '75%', top: '15%' } },
+  { value: 'RW', label: 'Right Wing (RW)', coords: { left: '75%', top: '85%' } },
+  { value: 'ST', label: 'Striker (ST)', coords: { left: '85%', top: '50%' } },
+  { value: 'SUB', label: 'Substitute / Bench', coords: { left: '0', top: '0' } }, // Special handling
 ];
 
 const getPositionCoords = (posValue?: string) => {
@@ -544,19 +545,27 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
                         </div>
                     </div>
                     
-                    {/* The Pitch */}
+                    {/* The Pitch (Landscape Orientation) */}
                     <div className="relative w-full aspect-[4/3] md:aspect-[16/9] min-h-[400px] bg-green-700 border-b border-gray-200 overflow-hidden shadow-inner">
-                        {/* Grass Pattern */}
-                        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.1) 50%)', backgroundSize: '100% 40px' }}></div>
+                        {/* Grass Pattern (Vertical Stripes for Landscape) */}
+                        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(to right, transparent 50%, rgba(0,0,0,0.1) 50%)', backgroundSize: '100px 100%' }}></div>
                         
                         {/* Pitch Markings */}
-                        <div className="absolute inset-4 border-2 border-white/50 rounded-lg"></div>
-                        <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/50 transform -translate-x-1/2"></div>
-                        <div className="absolute top-1/2 left-1/2 w-24 h-24 border-2 border-white/50 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
+                        <div className="absolute inset-6 border-2 border-white/40 rounded-sm"></div> {/* Touchlines */}
+                        <div className="absolute top-6 bottom-6 left-1/2 w-0.5 bg-white/40 transform -translate-x-1/2"></div> {/* Halfway Line */}
                         
-                        {/* Penalty Areas */}
-                        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-48 h-24 border-2 border-t-0 border-white/50 bg-white/5"></div>
-                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-48 h-24 border-2 border-b-0 border-white/50 bg-white/5"></div>
+                        {/* Center Circle */}
+                        <div className="absolute top-1/2 left-1/2 w-24 h-24 md:w-32 md:h-32 border-2 border-white/40 rounded-full transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
+                            <div className="w-2 h-2 bg-white/60 rounded-full"></div>
+                        </div>
+                        
+                        {/* Penalty Area Left (Home GK) */}
+                        <div className="absolute top-1/2 left-6 transform -translate-y-1/2 w-24 h-48 md:w-32 md:h-64 border-2 border-l-0 border-white/40 bg-white/5"></div>
+                        <div className="absolute top-1/2 left-6 transform -translate-y-1/2 w-8 h-20 md:w-12 md:h-32 border-2 border-l-0 border-white/40"></div>
+
+                        {/* Penalty Area Right (Away/Attack) */}
+                        <div className="absolute top-1/2 right-6 transform -translate-y-1/2 w-24 h-48 md:w-32 md:h-64 border-2 border-r-0 border-white/40 bg-white/5"></div>
+                         <div className="absolute top-1/2 right-6 transform -translate-y-1/2 w-8 h-20 md:w-12 md:h-32 border-2 border-r-0 border-white/40"></div>
 
                         {/* Players on Pitch */}
                         {players.filter(p => p.teamId === selectedTeamId).map(p => {
@@ -1186,3 +1195,4 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
 };
 
 export default CoachDashboard;
+
