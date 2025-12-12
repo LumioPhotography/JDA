@@ -28,7 +28,7 @@ export const storage = {
     try {
       const { data, error } = await supabase.from('players').select('*');
       if (error) throw error;
-      if (data && data.length > 0) return data.map((row: any) => row.data as Player);
+      if (data && data.length > 0) return data.map((row: any) => row.data as Player).filter(Boolean);
       return []; 
     } catch (e) {
       console.warn("Supabase load error (Players)", e);
@@ -61,7 +61,7 @@ export const storage = {
     try {
       const { data, error } = await supabase.from('coaches').select('*');
       if (error) throw error;
-      if (data && data.length > 0) return data.map((row: any) => row.data as Coach);
+      if (data && data.length > 0) return data.map((row: any) => row.data as Coach).filter(Boolean);
       return []; 
     } catch (e) {
       console.warn("Supabase load error (Coaches)", e);
@@ -83,7 +83,8 @@ export const storage = {
     try {
       const { data, error } = await supabase.from('teams').select('*');
       if (error) throw error;
-      if (data && data.length > 0) return data.map((row: any) => row.data as Team);
+      // Filter Boolean ensures we don't pass 'undefined' if a row is corrupt
+      if (data && data.length > 0) return data.map((row: any) => row.data as Team).filter(t => t && t.id && t.name);
       return []; 
     } catch (e) {
         console.warn("Supabase load error (Teams)", e);
@@ -97,10 +98,11 @@ export const storage = {
         if (error) throw error;
     } catch (e) {
         console.error("Error saving team", e);
+        alert("Failed to save team. Please check your connection.");
     }
   },
 
-  // NEW: Bulk save teams to prevent race conditions with real-time subscriptions
+  // Bulk save teams to prevent race conditions
   saveTeams: async (teams: Team[]) => {
     try {
         const rows = teams.map(t => ({ id: t.id, data: t }));
@@ -108,6 +110,7 @@ export const storage = {
         if (error) throw error;
     } catch (e) {
         console.error("Error saving teams (bulk)", e);
+        alert("Failed to save teams. Please check your connection.");
     }
   },
 

@@ -21,7 +21,7 @@ const App: React.FC = () => {
 
   // Debugging Version
   useEffect(() => {
-    console.log("App Version 2.9 (Bulk Fix) Loaded");
+    console.log("App Version 3.0 (Robustness) Loaded");
   }, []);
 
   const fetchData = async () => {
@@ -120,22 +120,28 @@ const App: React.FC = () => {
     storage.saveTeam(newTeam);
   };
   
-  // FIXED: Use storage.saveTeams for bulk update to prevent race conditions
   const handleAddTeams = (newTeams: Team[]) => {
       setTeams(prev => [...prev, ...newTeams]);
       storage.saveTeams(newTeams);
   };
 
-  // NEW: Handle Delete Team
   const handleDeleteTeam = (teamId: string) => {
     if (!confirm("Are you sure you want to delete this team?")) return;
     setTeams(prev => prev.filter(t => t.id !== teamId));
-    // Ideally we would delete from storage here too.
   };
 
   const handleUpdateTeamLogo = (newUrl: string) => {
     setTeamLogo(newUrl);
     storage.saveTeamLogo(newUrl);
+  };
+  
+  const handleLoadDemoData = () => {
+      if(!confirm("This will reload default demo teams and players. Continue?")) return;
+      setTeams(MOCK_TEAMS);
+      setPlayers(MOCK_PLAYERS);
+      storage.saveTeams(MOCK_TEAMS);
+      MOCK_PLAYERS.forEach(p => storage.savePlayer(p));
+      alert("Demo data loaded!");
   };
 
   const handleLogin = (role: UserRole, credentials: string) => {
@@ -203,6 +209,7 @@ const App: React.FC = () => {
         onLogout={handleLogout}
         teamLogo={teamLogo}
         onUpdateTeamLogo={handleUpdateTeamLogo}
+        onLoadDemoData={handleLoadDemoData}
       />
     );
   }

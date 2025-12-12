@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Player, ReportCard, Stat, StatGroup, Coach, UserRole, Team, Branch, Target } from '../types';
 import { generateCoachFeedback } from '../services/geminiService';
-import { LogOut, Sparkles, User, Save, ChevronRight, Shield, Calendar, Brain, Activity, Zap, Footprints, Settings, Camera, Upload, Users, UserPlus, Lock, Cloud, Trash2, Edit2, Plus, Target as TargetIcon, Menu, X, Check, Copy } from 'lucide-react';
+import { LogOut, Sparkles, User, Save, ChevronRight, Shield, Calendar, Brain, Activity, Zap, Footprints, Settings, Camera, Upload, Users, UserPlus, Lock, Cloud, Trash2, Edit2, Plus, Target as TargetIcon, Menu, X, Check, Copy, RefreshCw } from 'lucide-react';
 
 interface CoachDashboardProps {
   currentUser: Coach;
@@ -19,6 +19,7 @@ interface CoachDashboardProps {
   onDeleteTeam: (teamId: string) => void;
   teamLogo: string;
   onUpdateTeamLogo: (logo: string) => void;
+  onLoadDemoData: () => void;
 }
 
 const STAT_TEMPLATE = {
@@ -110,7 +111,8 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
   onAddTeams,
   onDeleteTeam,
   teamLogo, 
-  onUpdateTeamLogo 
+  onUpdateTeamLogo,
+  onLoadDemoData
 }) => {
   const [view, setView] = useState<'roster' | 'settings' | 'home' | 'team_view'>('home');
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
@@ -693,7 +695,12 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
                     {/* TEAMS */}
                     {settingsTab === 'teams' && (
                         <div>
-                            <h2 className="text-2xl font-black text-black mb-6">Manage Teams</h2>
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-black text-black">Manage Teams</h2>
+                                <button onClick={onLoadDemoData} className="text-xs text-gray-400 hover:text-red-500 font-bold flex items-center gap-1 border border-gray-200 px-3 py-1.5 rounded-lg hover:border-red-200 bg-white">
+                                    <RefreshCw size={12}/> Reset / Load Defaults
+                                </button>
+                            </div>
                             
                             {/* Bulk Generator */}
                             <div className="bg-teal-50 border border-teal-100 rounded-xl p-6 mb-8">
@@ -735,17 +742,24 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
                             </form>
 
                             <div className="space-y-2">
-                                {teams.map(t => (
-                                    <div key={t.id} className="p-3 bg-white border border-gray-100 rounded-lg flex justify-between items-center shadow-sm group">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-gray-800">{t.name}</span>
-                                        </div>
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">{players.filter(p => p.teamId === t.id).length} Players</span>
-                                            <button onClick={() => onDeleteTeam(t.id)} className="text-gray-300 hover:text-red-500"><Trash2 size={16} /></button>
-                                        </div>
+                                {teams.length === 0 ? (
+                                    <div className="p-8 text-center text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">
+                                        <p className="text-sm font-bold mb-2">No teams found.</p>
+                                        <p className="text-xs">Use the generator above or click "Reset / Load Defaults".</p>
                                     </div>
-                                ))}
+                                ) : (
+                                    teams.map(t => (
+                                        <div key={t.id} className="p-3 bg-white border border-gray-100 rounded-lg flex justify-between items-center shadow-sm group">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-gray-800">{t.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">{players.filter(p => p.teamId === t.id).length} Players</span>
+                                                <button onClick={() => onDeleteTeam(t.id)} className="text-gray-300 hover:text-red-500"><Trash2 size={16} /></button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
                     )}
