@@ -1,3 +1,4 @@
+
 import { Player, Coach, Team } from '../types';
 import { supabase } from './supabaseClient';
 import { MOCK_PLAYERS, MOCK_COACHES, MOCK_TEAMS, TEAM_LOGO_URL as DEFAULT_LOGO } from '../constants';
@@ -96,6 +97,17 @@ export const storage = {
         if (error) throw error;
     } catch (e) {
         console.error("Error saving team", e);
+    }
+  },
+
+  // NEW: Bulk save teams to prevent race conditions with real-time subscriptions
+  saveTeams: async (teams: Team[]) => {
+    try {
+        const rows = teams.map(t => ({ id: t.id, data: t }));
+        const { error } = await supabase.from('teams').upsert(rows);
+        if (error) throw error;
+    } catch (e) {
+        console.error("Error saving teams (bulk)", e);
     }
   },
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Player, ReportCard, Stat, StatGroup, Coach, UserRole, Team, Branch, Target } from '../types';
 import { generateCoachFeedback } from '../services/geminiService';
@@ -14,6 +15,8 @@ interface CoachDashboardProps {
   onDeletePlayer: (id: string) => void;
   onUpdateCoaches: (coaches: Coach[]) => void;
   onAddTeam: (team: Team) => void;
+  onAddTeams: (teams: Team[]) => void;
+  onDeleteTeam: (teamId: string) => void;
   teamLogo: string;
   onUpdateTeamLogo: (logo: string) => void;
 }
@@ -36,7 +39,62 @@ interface DraftData {
   targets: Target[];
   coachFooterNote: string;
   manualStrengths: string[];
+  authorCoachId?: string;
 }
+
+// --- TACTICAL POSITIONS CONFIGURATION ---
+const TACTICAL_POSITIONS = [
+  { value: 'GK', label: 'Goalkeeper (GK)', coords: { top: '88%', left: '48%' } },
+  { value: 'LB', label: 'Left Back (LB)', coords: { top: '75%', left: '15%' } },
+  { value: 'CB-L', label: 'Centre Back L (CB)', coords: { top: '78%', left: '35%' } },
+  { value: 'CB-R', label: 'Centre Back R (CB)', coords: { top: '78%', left: '61%' } },
+  { value: 'RB', label: 'Right Back (RB)', coords: { top: '75%', left: '81%' } },
+  { value: 'LWB', label: 'Left Wing Back (LWB)', coords: { top: '60%', left: '10%' } },
+  { value: 'RWB', label: 'Right Wing Back (RWB)', coords: { top: '60%', left: '86%' } },
+  { value: 'CDM', label: 'Defensive Mid (CDM)', coords: { top: '60%', left: '48%' } },
+  { value: 'CM-L', label: 'Centre Mid L (CM)', coords: { top: '45%', left: '35%' } },
+  { value: 'CM-R', label: 'Centre Mid R (CM)', coords: { top: '45%', left: '61%' } },
+  { value: 'CAM', label: 'Attacking Mid (CAM)', coords: { top: '30%', left: '48%' } },
+  { value: 'LM', label: 'Left Mid (LM)', coords: { top: '45%', left: '15%' } },
+  { value: 'RM', label: 'Right Mid (RM)', coords: { top: '45%', left: '81%' } },
+  { value: 'LW', label: 'Left Wing (LW)', coords: { top: '20%', left: '15%' } },
+  { value: 'RW', label: 'Right Wing (RW)', coords: { top: '20%', left: '81%' } },
+  { value: 'ST', label: 'Striker (ST)', coords: { top: '12%', left: '48%' } },
+  { value: 'SUB', label: 'Substitute / Bench', coords: { top: '0', left: '0' } }, // Special handling
+];
+
+const getPositionCoords = (posValue?: string) => {
+    if (!posValue) return null;
+    
+    // 1. Try Exact Match (Case Insensitive)
+    const exactMatch = TACTICAL_POSITIONS.find(p => p.value.toLowerCase() === posValue.toLowerCase());
+    if (exactMatch) return exactMatch.coords;
+    
+    // 2. Fuzzy Match for legacy text positions
+    const p = posValue.toLowerCase().trim();
+    
+    // Goalkeepers
+    if (p.includes('goal') || p.includes('gk') || p.includes('keeper')) return TACTICAL_POSITIONS.find(t => t.value === 'GK')?.coords;
+    
+    // Defenders
+    if (p.includes('left back') || p.includes('lb')) return TACTICAL_POSITIONS.find(t => t.value === 'LB')?.coords;
+    if (p.includes('right back') || p.includes('rb')) return TACTICAL_POSITIONS.find(t => t.value === 'RB')?.coords;
+    if (p.includes('centre') || p.includes('center') || p.includes('cb') || p.includes('def')) return TACTICAL_POSITIONS.find(t => t.value === 'CB-L')?.coords;
+    if (p.includes('wing back') || p.includes('wb')) return TACTICAL_POSITIONS.find(t => t.value === 'LWB')?.coords; 
+    
+    // Midfielders
+    if (p.includes('defensive') || p.includes('cdm') || p.includes('dm')) return TACTICAL_POSITIONS.find(t => t.value === 'CDM')?.coords;
+    if (p.includes('attacking') || p.includes('cam') || p.includes('am')) return TACTICAL_POSITIONS.find(t => t.value === 'CAM')?.coords;
+    if (p.includes('mid') || p.includes('cm')) return TACTICAL_POSITIONS.find(t => t.value === 'CM-L')?.coords;
+    
+    // Attackers
+    if (p.includes('left wing') || p.includes('lw')) return TACTICAL_POSITIONS.find(t => t.value === 'LW')?.coords;
+    if (p.includes('right wing') || p.includes('rw')) return TACTICAL_POSITIONS.find(t => t.value === 'RW')?.coords;
+    if (p.includes('wing')) return TACTICAL_POSITIONS.find(t => t.value === 'LW')?.coords; // Default to Left Wing if just 'wing'
+    if (p.includes('striker') || p.includes('for') || p.includes('st') || p.includes('att')) return TACTICAL_POSITIONS.find(t => t.value === 'ST')?.coords;
+    
+    return null; // Is Bench
+};
 
 const CoachDashboard: React.FC<CoachDashboardProps> = ({ 
   currentUser, 
@@ -49,10 +107,13 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
   onDeletePlayer,
   onUpdateCoaches,
   onAddTeam,
+  onAddTeams,
+  onDeleteTeam,
   teamLogo, 
   onUpdateTeamLogo 
 }) => {
-  const [view, setView] = useState<'roster' | 'settings' | 'home'>('home');
+  const [view, setView] = useState<'roster' | 'settings' | 'home' | 'team_view'>('home');
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [settingsTab, setSettingsTab] = useState<'branding' | 'coaches' | 'teams' | 'players'>('branding');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [drafts, setDrafts] = useState<Record<string, DraftData>>({});
@@ -62,6 +123,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
   // -- Form State --
   const [season, setSeason] = useState('2025/26');
   const [quarter, setQuarter] = useState('Winter Term');
+  const [authorCoachId, setAuthorCoachId] = useState(currentUser.id);
   
   const [statValues, setStatValues] = useState<Record<string, number>>({});
   const [attendance, setAttendance] = useState({ score: 4, commitment: 4, note: '' });
@@ -81,13 +143,17 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
 
   // -- New Entity Forms --
   const [newCoach, setNewCoach] = useState({ name: '', email: '', instagram: '', password: '', assignedTeams: '', isAdmin: false });
-  const [newPlayer, setNewPlayer] = useState({ name: '', branch: 'ACADEMY' as Branch, teamId: '', position: '', jersey: '', accessCode: '' });
+  const [newPlayer, setNewPlayer] = useState({ name: '', branch: 'ACADEMY' as Branch, teamId: '', position: 'SUB', jersey: '', accessCode: '' });
   const [newTeamName, setNewTeamName] = useState('');
   
   // -- Bulk Team Creator --
   const [bulkAges, setBulkAges] = useState('');
   const [bulkSuffixes, setBulkSuffixes] = useState('');
   const [bulkPreview, setBulkPreview] = useState<string[]>([]);
+  
+  // -- Secondary Logos --
+  const [secondaryLogos, setSecondaryLogos] = useState<string[]>([]); // In a real app this would load from settings
+  const secondaryLogoRef = useRef<HTMLInputElement>(null);
 
   // -- Edit State --
   const [editingCoach, setEditingCoach] = useState<Coach | null>(null);
@@ -111,14 +177,14 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
     setDrafts(prev => ({
       ...prev,
       [selectedPlayer.id]: {
-        statValues, attendance, ratings, coachNotes, season, quarter, generatedFeedback, targets, coachFooterNote, manualStrengths
+        statValues, attendance, ratings, coachNotes, season, quarter, generatedFeedback, targets, coachFooterNote, manualStrengths, authorCoachId
       }
     }));
-  }, [statValues, attendance, ratings, coachNotes, season, quarter, generatedFeedback, targets, coachFooterNote, manualStrengths, selectedPlayer]);
+  }, [statValues, attendance, ratings, coachNotes, season, quarter, generatedFeedback, targets, coachFooterNote, manualStrengths, authorCoachId, selectedPlayer]);
 
   useEffect(() => {
     if (selectedPlayer) {
-      setView('roster');
+      // setView('roster'); // Don't force view switch if already there
       const draft = drafts[selectedPlayer.id];
       if (draft) {
         setStatValues(draft.statValues);
@@ -131,6 +197,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
         setTargets(draft.targets);
         setCoachFooterNote(draft.coachFooterNote || '');
         setManualStrengths(draft.manualStrengths || []);
+        setAuthorCoachId(draft.authorCoachId || currentUser.id);
       } else {
         const initialStats: Record<string, number> = {};
         Object.values(STAT_TEMPLATE).flat().forEach(s => initialStats[s] = 3); // Default 3 (average)
@@ -142,6 +209,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
         setTargets([]);
         setCoachFooterNote('');
         setManualStrengths([]);
+        setAuthorCoachId(currentUser.id);
       }
       // Reset edit state
       setIsEditingPlayerDetails(false);
@@ -226,10 +294,13 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
     });
 
     const overallRating = parseFloat((statsArray.reduce((acc, curr) => acc + curr.value, 0) / statsArray.length).toFixed(1));
+    const author = coaches.find(c => c.id === authorCoachId) || currentUser;
 
     const newReport: ReportCard = {
       id: `rc-${Date.now()}`,
       season, quarter, date: new Date().toISOString(), overallRating,
+      authorCoachId: author.id,
+      authorCoachName: author.name,
       stats: statsArray,
       attendance: { attendanceScore: attendance.score, commitmentScore: attendance.commitment, note: attendance.note },
       ratingsSummary: { applicationScore: ratings.app, behaviourScore: ratings.behav, coachComment: ratings.note },
@@ -270,18 +341,6 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
     alert('Coach Added Successfully');
   };
 
-  const handleUpdateCoach = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingCoach) return;
-    const assigned = (typeof editingCoach.assignedTeams === 'string' ? editingCoach.assignedTeams : editingCoach.assignedTeams.join(',')).split(',').map((t: string) => t.trim());
-    
-    const updated = { ...editingCoach, assignedTeams: assigned };
-    const updatedList = coaches.map(c => c.id === editingCoach.id ? updated : c);
-    onUpdateCoaches(updatedList);
-    setEditingCoach(null);
-    alert("Coach Updated");
-  };
-
   const handleAddTeam = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTeamName) return;
@@ -289,20 +348,27 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
     setNewTeamName('');
     alert('Team Created');
   };
-
+  
   const handleBulkCreateTeams = () => {
       if (bulkPreview.length === 0) return;
       if (!confirm(`Create ${bulkPreview.length} new teams?`)) return;
       
+      const newTeams: Team[] = [];
       bulkPreview.forEach(name => {
-          // Check if exists to avoid dupes?
           if (!teams.find(t => t.id === name)) {
-            onAddTeam({ id: name, name });
+            newTeams.push({ id: name, name });
           }
       });
+      
+      if (newTeams.length > 0) {
+        onAddTeams(newTeams);
+        alert(`${newTeams.length} Teams Created Successfully!`);
+      } else {
+        alert("All selected teams already exist.");
+      }
+
       setBulkAges('');
       setBulkSuffixes('');
-      alert('Teams Created Successfully!');
   }
   
   const handleSavePlayerDetails = () => {
@@ -327,12 +393,11 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
       reportCards: []
     };
     onAddPlayer(player);
-    setNewPlayer({ name: '', branch: 'ACADEMY', teamId: '', position: '', jersey: '', accessCode: '' });
+    setNewPlayer({ name: '', branch: 'ACADEMY', teamId: '', position: 'SUB', jersey: '', accessCode: '' });
     alert('Player Added Successfully');
   };
 
-  // Fixed: Added handleImageUpload
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'team' | 'player') => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'team' | 'player' | 'secondary') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -344,12 +409,13 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
       } else if (type === 'player' && selectedPlayer) {
         onUpdatePlayer({ ...selectedPlayer, imageUrl: result });
         setSelectedPlayer({ ...selectedPlayer, imageUrl: result });
+      } else if (type === 'secondary') {
+          setSecondaryLogos([...secondaryLogos, result]);
       }
     };
     reader.readAsDataURL(file);
   };
 
-  // Fixed: Added getGroupIcon
   const getGroupIcon = (group: StatGroup) => {
      switch (group) {
       case 'Technical': return <Footprints size={16} />;
@@ -366,7 +432,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
     if (teamPlayers.length === 0) return 0;
     const sum = teamPlayers.reduce((acc, p) => {
       const lastReport = p.reportCards[0];
-      return acc + (lastReport ? lastReport.overallRating : 3);
+      return acc + (lastReport ? lastReport.overallRating : 3); // Default to 3 if no report
     }, 0);
     return (sum / teamPlayers.length).toFixed(1);
   };
@@ -391,7 +457,10 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
                  <Cloud size={12} className="text-teal-400" />
                  <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wide">Cloud Sync</span>
              </div>
-             <button onClick={onLogout} className="text-gray-400 hover:text-white flex items-center gap-2 text-sm font-bold uppercase">
+             <button onClick={() => setView('settings')} className="hidden md:flex text-gray-400 hover:text-white items-center gap-2 text-sm font-bold uppercase transition-colors">
+               <Settings size={18} /> <span>Settings</span>
+             </button>
+             <button onClick={onLogout} className="text-gray-400 hover:text-white flex items-center gap-2 text-sm font-bold uppercase transition-colors">
                <LogOut size={18} /> <span className="hidden md:inline">Sign Out</span>
              </button>
           </div>
@@ -402,7 +471,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
       {mobileMenuOpen && (
           <div className="lg:hidden bg-zinc-900 text-white p-4 space-y-2 border-b border-zinc-800">
               <button onClick={() => { setView('home'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 font-bold">Home</button>
-              <button onClick={() => { setView('roster'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 font-bold">Roster / Editor</button>
+              <button onClick={() => { setView('roster'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 font-bold">Team / Player Editor</button>
               <button onClick={() => { setView('settings'); setMobileMenuOpen(false); }} className="block w-full text-left py-2 font-bold">Settings</button>
           </div>
       )}
@@ -432,9 +501,8 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {teams.map(team => (
                                 <div key={team.id} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all group cursor-pointer" onClick={() => {
-                                    // Filter roster to this team
-                                    setSelectedPlayer(null);
-                                    setView('roster');
+                                    setSelectedTeamId(team.id);
+                                    setView('team_view');
                                 }}>
                                     <div className="bg-gray-50 p-4 border-b border-gray-100 flex justify-between items-center">
                                         <span className="font-black text-lg text-gray-800 uppercase">{team.name}</span>
@@ -443,13 +511,8 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
                                     <div className="p-4">
                                         <div className="flex -space-x-2 overflow-hidden mb-3">
                                             {players.filter(p => p.teamId === team.id).slice(0,5).map(p => (
-                                                <img key={p.id} src={p.imageUrl} className="inline-block h-8 w-8 rounded-full ring-2 ring-white" alt=""/>
+                                                <img key={p.id} src={p.imageUrl} className="inline-block h-8 w-8 rounded-full ring-2 ring-white object-cover" alt=""/>
                                             ))}
-                                            {players.filter(p => p.teamId === team.id).length > 5 && (
-                                                <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold ring-2 ring-white">
-                                                    +{players.filter(p => p.teamId === team.id).length - 5}
-                                                </div>
-                                            )}
                                         </div>
                                         <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">
                                             {players.filter(p => p.teamId === team.id).length} Players Registered
@@ -460,6 +523,100 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
                         </div>
                     )}
                 </div>
+            </div>
+        )}
+
+        {/* --- TEAM PERFORMANCE VIEW (PITCH) --- */}
+        {view === 'team_view' && selectedTeamId && (
+            <div className="animate-in fade-in">
+                 <button onClick={() => setView('home')} className="mb-4 text-xs font-bold text-gray-400 hover:text-black flex items-center gap-1">&larr; Back to Dashboard</button>
+                 <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6 border border-gray-200">
+                    <div className="bg-black text-white p-6 flex justify-between items-center border-b-4 border-teal-500">
+                        <div>
+                            <h2 className="text-2xl font-black uppercase tracking-tight">{teams.find(t => t.id === selectedTeamId)?.name}</h2>
+                            <span className="text-teal-400 text-xs font-bold tracking-widest uppercase">Performance Overview</span>
+                        </div>
+                        <div className="text-right">
+                            <span className="block text-3xl font-black text-white">{getTeamRating(selectedTeamId)}</span>
+                            <span className="text-gray-400 text-[10px] font-bold uppercase">Team Average</span>
+                        </div>
+                    </div>
+                    
+                    {/* The Pitch */}
+                    <div className="relative w-full aspect-[4/3] md:aspect-[16/9] min-h-[400px] bg-green-700 border-b border-gray-200 overflow-hidden shadow-inner">
+                        {/* Grass Pattern */}
+                        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.1) 50%)', backgroundSize: '100% 40px' }}></div>
+                        
+                        {/* Pitch Markings */}
+                        <div className="absolute inset-4 border-2 border-white/50 rounded-lg"></div>
+                        <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/50 transform -translate-x-1/2"></div>
+                        <div className="absolute top-1/2 left-1/2 w-24 h-24 border-2 border-white/50 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
+                        
+                        {/* Penalty Areas */}
+                        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-48 h-24 border-2 border-t-0 border-white/50 bg-white/5"></div>
+                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-48 h-24 border-2 border-b-0 border-white/50 bg-white/5"></div>
+
+                        {/* Players on Pitch */}
+                        {players.filter(p => p.teamId === selectedTeamId).map(p => {
+                             const rating = p.reportCards[0]?.overallRating || 3;
+                             const coords = getPositionCoords(p.position);
+                             if (!coords || p.position === 'SUB' || !p.position) return null; // Don't render bench here
+                             
+                             return (
+                                 <div 
+                                    key={p.id} 
+                                    onClick={() => { setSelectedPlayer(p); setView('roster'); }}
+                                    className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center cursor-pointer group transition-all hover:scale-110 z-10"
+                                    style={{ top: coords.top, left: coords.left }}
+                                 >
+                                    <div className="relative">
+                                        <img src={p.imageUrl} className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-white shadow-lg object-cover bg-white" />
+                                        <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black border border-white shadow ${rating >= 4 ? 'bg-teal-500 text-white' : rating >= 3 ? 'bg-orange-500 text-white' : 'bg-red-500 text-white'}`}>
+                                            {rating}
+                                        </div>
+                                    </div>
+                                    <div className="mt-1 bg-black/60 backdrop-blur-sm text-white text-[8px] md:text-[10px] font-bold px-2 py-0.5 rounded-full uppercase truncate max-w-[80px] shadow-sm">
+                                        {p.name}
+                                    </div>
+                                    <div className="mt-0.5 text-[7px] text-white/80 font-bold bg-black/30 px-1 rounded uppercase">
+                                        {p.position}
+                                    </div>
+                                 </div>
+                             )
+                        })}
+                    </div>
+                    
+                    {/* The Bench / Substitutes */}
+                    <div className="bg-zinc-100 p-6 border-t border-gray-200">
+                        <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-4">Bench / Substitutes / Unassigned</h4>
+                        <div className="flex flex-wrap gap-4">
+                            {players.filter(p => p.teamId === selectedTeamId && (p.position === 'SUB' || !getPositionCoords(p.position))).map(p => {
+                                 const rating = p.reportCards[0]?.overallRating || 3;
+                                 return (
+                                     <div key={p.id} onClick={() => { setSelectedPlayer(p); setView('roster'); }} className="flex items-center gap-3 bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:border-teal-500">
+                                         <img src={p.imageUrl} className="w-8 h-8 rounded-full object-cover border border-gray-100" />
+                                         <div>
+                                             <div className="text-xs font-bold text-gray-800">{p.name}</div>
+                                             <div className="flex items-center gap-1">
+                                                 <span className={`w-2 h-2 rounded-full ${rating >= 4 ? 'bg-teal-500' : rating >= 3 ? 'bg-orange-500' : 'bg-red-500'}`}></span>
+                                                 <span className="text-[10px] text-gray-400 font-medium">Rating: {rating}</span>
+                                             </div>
+                                         </div>
+                                     </div>
+                                 )
+                            })}
+                            {players.filter(p => p.teamId === selectedTeamId && (p.position === 'SUB' || !getPositionCoords(p.position))).length === 0 && (
+                                <span className="text-xs text-gray-400 italic">All players assigned to pitch.</span>
+                            )}
+                        </div>
+                    </div>
+                 </div>
+                 
+                 <div className="text-center">
+                    <button onClick={() => { setSelectedPlayer(null); setView('roster'); }} className="bg-black text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-zinc-800">
+                        Manage Team & Positions
+                    </button>
+                 </div>
             </div>
         )}
 
@@ -495,7 +652,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
                         <div>
                             <h2 className="text-2xl font-black text-black mb-6">Branding Settings</h2>
                             <div className="mb-8">
-                                <label className="block text-sm font-bold text-gray-600 uppercase tracking-wide mb-4">Team Badge / Logo</label>
+                                <label className="block text-sm font-bold text-gray-600 uppercase tracking-wide mb-4">Main Team Badge / Logo</label>
                                 <div className="flex items-center gap-6">
                                     <div className="w-32 h-32 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center relative overflow-hidden group">
                                         {teamLogo ? (
@@ -511,6 +668,24 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
                                         </button>
                                     </div>
                                 </div>
+                            </div>
+                            
+                            {/* Secondary Logos (Multiple Badges) */}
+                            <div className="mb-8 pt-6 border-t border-gray-100">
+                                <label className="block text-sm font-bold text-gray-600 uppercase tracking-wide mb-4">Secondary Badges (Home Page)</label>
+                                <div className="flex flex-wrap gap-4 mb-4">
+                                    {secondaryLogos.map((logo, idx) => (
+                                        <div key={idx} className="w-16 h-16 bg-gray-50 rounded-lg border border-gray-200 p-1 relative group">
+                                            <img src={logo} className="w-full h-full object-contain" />
+                                            <button onClick={() => setSecondaryLogos(secondaryLogos.filter((_, i) => i !== idx))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"><X size={12}/></button>
+                                        </div>
+                                    ))}
+                                    <button onClick={() => secondaryLogoRef.current?.click()} className="w-16 h-16 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 hover:text-teal-500 hover:border-teal-500">
+                                        <Plus size={20} />
+                                    </button>
+                                </div>
+                                <input type="file" ref={secondaryLogoRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, 'secondary')} />
+                                <p className="text-xs text-gray-400">These logos will appear on the portal home screen.</p>
                             </div>
                         </div>
                     )}
@@ -549,7 +724,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
                                         </div>
                                     </div>
                                 )}
-                                <button onClick={handleBulkCreateTeams} disabled={bulkPreview.length === 0} className="bg-teal-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-teal-700 disabled:opacity-50 flex items-center gap-2">
+                                <button type="button" onClick={handleBulkCreateTeams} disabled={bulkPreview.length === 0} className="bg-teal-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-teal-700 disabled:opacity-50 flex items-center gap-2">
                                     Generate & Save Teams
                                 </button>
                             </div>
@@ -561,12 +736,58 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
 
                             <div className="space-y-2">
                                 {teams.map(t => (
-                                    <div key={t.id} className="p-3 bg-white border border-gray-100 rounded-lg flex justify-between items-center shadow-sm">
+                                    <div key={t.id} className="p-3 bg-white border border-gray-100 rounded-lg flex justify-between items-center shadow-sm group">
                                         <div className="flex items-center gap-2">
                                             <span className="font-bold text-gray-800">{t.name}</span>
-                                            {/* Edit Button placeholder - renaming teams would require updating all players in that team, skipping complexity for now as requested 'edit details' primarily for players */}
                                         </div>
-                                        <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">{players.filter(p => p.teamId === t.id).length} Players</span>
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">{players.filter(p => p.teamId === t.id).length} Players</span>
+                                            <button onClick={() => onDeleteTeam(t.id)} className="text-gray-300 hover:text-red-500"><Trash2 size={16} /></button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* MANAGE COACHES (Added Section) */}
+                    {settingsTab === 'coaches' && (
+                        <div>
+                            <h2 className="text-2xl font-black text-black mb-6">Manage Staff</h2>
+                            
+                            <form onSubmit={handleAddCoach} className="bg-gray-50 p-6 rounded-xl border border-gray-200 mb-8">
+                                <h3 className="text-sm font-black text-gray-500 uppercase tracking-wide mb-4">Add New Coach</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <input required placeholder="Full Name" className="border rounded-lg p-3 text-sm" value={newCoach.name} onChange={e => setNewCoach({...newCoach, name: e.target.value})} />
+                                    <input required type="email" placeholder="Email Address" className="border rounded-lg p-3 text-sm" value={newCoach.email} onChange={e => setNewCoach({...newCoach, email: e.target.value})} />
+                                    <input placeholder="Instagram (Optional)" className="border rounded-lg p-3 text-sm" value={newCoach.instagram} onChange={e => setNewCoach({...newCoach, instagram: e.target.value})} />
+                                    <input required type="password" placeholder="Set Password" className="border rounded-lg p-3 text-sm" value={newCoach.password} onChange={e => setNewCoach({...newCoach, password: e.target.value})} />
+                                    <div className="md:col-span-2">
+                                         <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Assigned Teams (comma separated IDs)</label>
+                                         <input placeholder="e.g. U10 Reds, U12 Blues" className="w-full border rounded-lg p-3 text-sm" value={newCoach.assignedTeams} onChange={e => setNewCoach({...newCoach, assignedTeams: e.target.value})} />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" id="isAdmin" checked={newCoach.isAdmin} onChange={e => setNewCoach({...newCoach, isAdmin: e.target.checked})} className="w-4 h-4 accent-teal-600" />
+                                        <label htmlFor="isAdmin" className="text-sm font-bold text-gray-700">Grant Admin Privileges</label>
+                                    </div>
+                                </div>
+                                <button type="submit" className="bg-teal-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-teal-700">Add Coach</button>
+                            </form>
+
+                            <div className="grid gap-4">
+                                {coaches.map(c => (
+                                    <div key={c.id} className="p-4 bg-white border border-gray-100 rounded-xl flex justify-between items-center shadow-sm">
+                                        <div className="flex items-center gap-3">
+                                            <img src={c.imageUrl} className="w-10 h-10 rounded-full border border-gray-200" />
+                                            <div>
+                                                <div className="font-bold text-gray-900">{c.name} {c.isAdmin && <span className="bg-black text-white text-[10px] px-1 rounded ml-1">ADMIN</span>}</div>
+                                                <div className="text-xs text-gray-400">{c.email}</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-xs font-bold text-teal-600">{c.assignedTeams.length > 0 ? c.assignedTeams.join(', ') : 'All Teams'}</div>
+                                            <div className="text-[10px] text-gray-400">Password: {c.password}</div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -583,25 +804,40 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
                                     {/* Branch Selection */}
                                     <div className="md:col-span-2">
                                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Branch</label>
-                                        <div className="flex gap-4">
-                                            <button type="button" onClick={() => setNewPlayer({...newPlayer, branch: 'ACADEMY'})} className={`flex-1 py-2 rounded-lg font-bold text-sm border ${newPlayer.branch === 'ACADEMY' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-300'}`}>ACADEMY</button>
-                                            <button type="button" onClick={() => setNewPlayer({...newPlayer, branch: 'COACHING'})} className={`flex-1 py-2 rounded-lg font-bold text-sm border ${newPlayer.branch === 'COACHING' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-300'}`}>PRIVATE COACHING</button>
+                                        <div className="flex gap-2">
+                                            <button type="button" onClick={() => setNewPlayer({...newPlayer, branch: 'ACADEMY'})} className={`flex-1 py-3 rounded-lg font-bold text-xs border ${newPlayer.branch === 'ACADEMY' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-300'}`}>ACADEMY</button>
+                                            <button type="button" onClick={() => setNewPlayer({...newPlayer, branch: 'TECH_CENTRE'})} className={`flex-1 py-3 rounded-lg font-bold text-xs border ${newPlayer.branch === 'TECH_CENTRE' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-300'}`}>TECH CENTRE</button>
+                                            <button type="button" onClick={() => setNewPlayer({...newPlayer, branch: 'COACHING'})} className={`flex-1 py-3 rounded-lg font-bold text-xs border ${newPlayer.branch === 'COACHING' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-300'}`}>PRIVATE COACHING</button>
                                         </div>
                                     </div>
 
                                     <input required placeholder="Player Name" className="border rounded-lg p-3 text-sm" value={newPlayer.name} onChange={e => setNewPlayer({...newPlayer, name: e.target.value})} />
                                     
-                                    {newPlayer.branch === 'ACADEMY' && (
+                                    {(newPlayer.branch === 'ACADEMY' || newPlayer.branch === 'TECH_CENTRE') && (
                                         <>
-                                            <select required className="border rounded-lg p-3 text-sm" value={newPlayer.teamId} onChange={e => setNewPlayer({...newPlayer, teamId: e.target.value})}>
-                                                <option value="">Select Team</option>
-                                                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                            </select>
-                                            <input required placeholder="Jersey Number" type="number" className="border rounded-lg p-3 text-sm" value={newPlayer.jersey} onChange={e => setNewPlayer({...newPlayer, jersey: e.target.value})} />
+                                            <div className="flex gap-2 items-center">
+                                                <select required className="flex-1 border rounded-lg p-3 text-sm" value={newPlayer.teamId} onChange={e => setNewPlayer({...newPlayer, teamId: e.target.value})}>
+                                                    <option value="">Select Team</option>
+                                                    {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                                </select>
+                                                <button type="button" onClick={() => { setView('settings'); setSettingsTab('teams'); }} className="bg-black text-white p-3 rounded-lg hover:bg-zinc-800 transition-colors" title="Create New Team">
+                                                    <Plus size={16}/>
+                                                </button>
+                                            </div>
+                                            <input placeholder="Jersey Number (Optional)" type="number" className="border rounded-lg p-3 text-sm" value={newPlayer.jersey} onChange={e => setNewPlayer({...newPlayer, jersey: e.target.value})} />
                                         </>
                                     )}
                                     
-                                    <input required placeholder="Position (e.g. Forward)" className="border rounded-lg p-3 text-sm" value={newPlayer.position} onChange={e => setNewPlayer({...newPlayer, position: e.target.value})} />
+                                    {/* REPLACED: Tactical Position Select in Registration */}
+                                     <div>
+                                        <select required className="w-full border rounded-lg p-3 text-sm" value={newPlayer.position} onChange={e => setNewPlayer({...newPlayer, position: e.target.value})}>
+                                            <option value="">Select Tactical Position</option>
+                                            {TACTICAL_POSITIONS.map(p => (
+                                                <option key={p.value} value={p.value}>{p.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    
                                     <input required placeholder="Parent Access Code (e.g. 1234)" className="border rounded-lg p-3 text-sm" value={newPlayer.accessCode} onChange={e => setNewPlayer({...newPlayer, accessCode: e.target.value})} />
                                 </div>
                                 <button type="submit" className="bg-teal-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-teal-700">Add Player</button>
@@ -627,7 +863,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden flex flex-col h-full">
                   <div className="p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                     <button onClick={() => setView('home')} className="text-xs font-bold text-gray-400 hover:text-black">&larr; BACK</button>
-                    <h2 className="font-black text-black uppercase tracking-wide text-sm">Players</h2>
+                    <h2 className="font-black text-black uppercase tracking-wide text-sm">Squad List</h2>
                   </div>
                   <ul className="overflow-y-auto flex-1 p-2">
                     {myPlayers.length === 0 && <li className="p-4 text-center text-sm text-gray-400">No players found.</li>}
@@ -646,7 +882,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
                                 {hasDraft && selectedPlayer?.id !== p.id && <div className="w-2 h-2 rounded-full bg-teal-500"></div>}
                             </div>
                             <p className={`text-[10px] font-bold uppercase ${selectedPlayer?.id === p.id ? 'text-gray-400' : 'text-gray-500'}`}>
-                                {p.branch === 'ACADEMY' ? `${p.teamId}` : 'Coaching'}
+                                {p.branch === 'ACADEMY' ? `${p.teamId}` : p.branch === 'TECH_CENTRE' ? `TC: ${p.teamId}` : 'Coaching'}
                             </p>
                           </div>
                           {currentUser.isAdmin && (
@@ -681,7 +917,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
                   <div className="bg-gray-100 p-6 rounded-full">
                     <User size={64} className="opacity-20 text-black" />
                   </div>
-                  <p className="font-medium">Select a player from the roster</p>
+                  <p className="font-medium">Select a player from the list</p>
                 </div>
               ) : (
                 <div className="space-y-8 max-w-3xl mx-auto pb-10">
@@ -700,10 +936,16 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
                            <div className="space-y-2">
                               <input className="border p-1 rounded text-sm font-bold" value={editPlayerName} onChange={e => setEditPlayerName(e.target.value)} />
                               <div className="flex gap-2">
-                                <select className="border p-1 rounded text-xs" value={editPlayerTeam} onChange={e => setEditPlayerTeam(e.target.value)}>
-                                   {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                <div className="flex items-center gap-1">
+                                    <select className="border p-1 rounded text-xs" value={editPlayerTeam} onChange={e => setEditPlayerTeam(e.target.value)}>
+                                    {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                    </select>
+                                    <button onClick={() => { setView('settings'); setSettingsTab('teams'); }} className="bg-black text-white p-1 rounded" title="Create New Team"><Plus size={14}/></button>
+                                </div>
+                                {/* REPLACED: Tactical Position Select */}
+                                <select className="border p-1 rounded text-xs w-32" value={editPlayerPosition} onChange={e => setEditPlayerPosition(e.target.value)}>
+                                    {TACTICAL_POSITIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                                 </select>
-                                <input className="border p-1 rounded text-xs w-20" value={editPlayerPosition} onChange={e => setEditPlayerPosition(e.target.value)} />
                               </div>
                               <div className="flex gap-2">
                                 <button onClick={handleSavePlayerDetails} className="bg-teal-500 text-white p-1 rounded"><Check size={14}/></button>
@@ -716,21 +958,33 @@ const CoachDashboard: React.FC<CoachDashboardProps> = ({
                                     {selectedPlayer.name}
                                     <button onClick={() => setIsEditingPlayerDetails(true)} className="text-gray-300 hover:text-black"><Edit2 size={14}/></button>
                                 </h2>
-                                <span className="text-xs font-bold bg-teal-100 text-teal-800 px-2 py-0.5 rounded">{selectedPlayer.teamId || selectedPlayer.branch} • {selectedPlayer.position}</span>
+                                <span className="text-xs font-bold bg-teal-100 text-teal-800 px-2 py-0.5 rounded flex items-center gap-2 w-fit">
+                                    {selectedPlayer.teamId || selectedPlayer.branch} 
+                                    <span className="w-1 h-1 bg-teal-800 rounded-full"></span>
+                                    {TACTICAL_POSITIONS.find(p => p.value === selectedPlayer.position)?.label || selectedPlayer.position}
+                                </span>
                             </div>
                         )}
                     </div>
-                    <div className="flex gap-2">
-                      <select value={season} onChange={e => setSeason(e.target.value)} className="border-2 border-gray-200 rounded-lg p-2 text-sm bg-white font-bold focus:border-teal-500 outline-none">
-                        <option value="2025/26">Season 25/26</option>
-                        <option value="2026/27">Season 26/27</option>
-                      </select>
-                      <select value={quarter} onChange={e => setQuarter(e.target.value)} className="border-2 border-gray-200 rounded-lg p-2 text-sm bg-white font-bold focus:border-teal-500 outline-none">
-                        <option value="Autumn Term">Autumn Term</option>
-                        <option value="Winter Term">Winter Term</option>
-                        <option value="Spring Term">Spring Term</option>
-                        <option value="Summer Term">Summer Term</option>
-                      </select>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                          <select value={season} onChange={e => setSeason(e.target.value)} className="border-2 border-gray-200 rounded-lg p-2 text-sm bg-white font-bold focus:border-teal-500 outline-none">
+                            <option value="2025/26">Season 25/26</option>
+                            <option value="2026/27">Season 26/27</option>
+                          </select>
+                          <select value={quarter} onChange={e => setQuarter(e.target.value)} className="border-2 border-gray-200 rounded-lg p-2 text-sm bg-white font-bold focus:border-teal-500 outline-none">
+                            <option value="Autumn Term">Autumn Term</option>
+                            <option value="Winter Term">Winter Term</option>
+                            <option value="Spring Term">Spring Term</option>
+                            <option value="Summer Term">Summer Term</option>
+                          </select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold uppercase text-gray-400">Report Author:</span>
+                        <select value={authorCoachId} onChange={e => setAuthorCoachId(e.target.value)} className="border rounded text-xs p-1">
+                            {coaches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
                     </div>
                   </div>
 

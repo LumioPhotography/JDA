@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Login from './components/Login';
 import ParentDashboard from './components/ParentDashboard';
@@ -20,7 +21,7 @@ const App: React.FC = () => {
 
   // Debugging Version
   useEffect(() => {
-    console.log("App Version 2.6 Loaded");
+    console.log("App Version 2.9 (Bulk Fix) Loaded");
   }, []);
 
   const fetchData = async () => {
@@ -118,6 +119,19 @@ const App: React.FC = () => {
     setTeams(prev => [...prev, newTeam]);
     storage.saveTeam(newTeam);
   };
+  
+  // FIXED: Use storage.saveTeams for bulk update to prevent race conditions
+  const handleAddTeams = (newTeams: Team[]) => {
+      setTeams(prev => [...prev, ...newTeams]);
+      storage.saveTeams(newTeams);
+  };
+
+  // NEW: Handle Delete Team
+  const handleDeleteTeam = (teamId: string) => {
+    if (!confirm("Are you sure you want to delete this team?")) return;
+    setTeams(prev => prev.filter(t => t.id !== teamId));
+    // Ideally we would delete from storage here too.
+  };
 
   const handleUpdateTeamLogo = (newUrl: string) => {
     setTeamLogo(newUrl);
@@ -184,6 +198,8 @@ const App: React.FC = () => {
         onDeletePlayer={handleDeletePlayer}
         onUpdateCoaches={handleUpdateCoaches}
         onAddTeam={handleAddTeam}
+        onAddTeams={handleAddTeams}
+        onDeleteTeam={handleDeleteTeam}
         onLogout={handleLogout}
         teamLogo={teamLogo}
         onUpdateTeamLogo={handleUpdateTeamLogo}

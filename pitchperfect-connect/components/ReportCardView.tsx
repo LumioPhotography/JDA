@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
 import { ReportCard, Player, StatGroup } from '../types';
-import { Trophy, CheckCircle2, User, Footprints, Brain, Zap, Activity, MessageSquare, Send, Calendar, Target, AlertCircle, Star, PenTool } from 'lucide-react';
+import { Trophy, CheckCircle2, User, Footprints, Brain, Zap, Activity, MessageSquare, Send, Calendar, Target, AlertCircle, Star, PenTool, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { askCoachAI, getDrillSuggestion } from '../services/geminiService';
+import { DEFINITIONS } from '../constants';
 
 interface ReportCardViewProps {
   reportCard: ReportCard;
@@ -15,6 +17,11 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, onB
   const [chatQuestion, setChatQuestion] = useState('');
   const [chatResponse, setChatResponse] = useState('');
   const [loadingChat, setLoadingChat] = useState(false);
+  
+  // Drill Expansion State
+  const [expandedDrill, setExpandedDrill] = useState<string | null>(null);
+  const [drillContent, setDrillContent] = useState<string>("");
+  const [loadingDrill, setLoadingDrill] = useState(false);
 
   const handleAskAI = async () => {
     if (!chatQuestion.trim()) return;
@@ -26,24 +33,30 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, onB
     finally { setLoadingChat(false); }
   };
 
-  const handleDrillClick = async (area: string) => {
-    alert(`Generating drill for: ${area}...`);
+  const handleDrillExpand = async (area: string, type: string) => {
+    if (expandedDrill === type) {
+        setExpandedDrill(null); // Collapse
+        return;
+    }
+    setExpandedDrill(type);
+    setLoadingDrill(true);
     const drill = await getDrillSuggestion(area);
-    alert(`COACH SUGGESTION:\n\n${drill}`);
+    setDrillContent(drill);
+    setLoadingDrill(false);
   };
 
   const getBarColor = (val: number) => {
     if (val <= 2) return 'bg-red-500';
     if (val === 3) return 'bg-orange-500';
     if (val === 4) return 'bg-teal-500';
-    return 'bg-[#D4AF37]'; // Metallic Gold
+    return 'bg-gradient-to-r from-yellow-400 to-yellow-600 shadow-md'; // Shiny Gold
   };
   
   const getScoreColor = (val: number) => {
      if (val <= 2) return 'text-red-500';
     if (val === 3) return 'text-orange-500';
     if (val === 4) return 'text-teal-500';
-    return 'text-[#D4AF37]'; // Metallic Gold
+    return 'text-yellow-500 drop-shadow-sm'; // Gold text
   }
 
   const getGroupIcon = (group: StatGroup) => {
@@ -77,6 +90,9 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, onB
                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm border-t border-white/10 pt-4 mt-2">
                      <div><span className="block text-[10px] text-gray-400 uppercase tracking-widest mb-0.5">Term</span><span className="font-bold text-teal-400">{reportCard.quarter}</span></div>
                      <div><span className="block text-[10px] text-gray-400 uppercase tracking-widest mb-0.5">Position</span><span className="font-bold text-white">{player.position}</span></div>
+                     {reportCard.authorCoachName && (
+                        <div><span className="block text-[10px] text-gray-400 uppercase tracking-widest mb-0.5">Coach</span><span className="font-bold text-white">{reportCard.authorCoachName}</span></div>
+                     )}
                  </div>
              </div>
          </div>
@@ -90,16 +106,31 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, onB
                 <CheckCircle2 size={16} /> Ratings Summary
              </h3>
              <div className="grid grid-cols-2 gap-4 mb-4">
-                 <div className="text-center bg-white/5 rounded-xl p-4 border border-white/10">
+                 <div className="text-center bg-white/5 rounded-xl p-4 border border-white/10 group relative cursor-help">
                      <span className={`block text-3xl font-black ${getScoreColor(reportCard.ratingsSummary?.applicationScore)}`}>{reportCard.ratingsSummary?.applicationScore}/5</span>
                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mt-2 block">Application</span>
+                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] p-2 rounded w-32 hidden group-hover:block z-50 text-center border border-teal-500/30">
+                        {DEFINITIONS['Application']}
+                     </div>
                  </div>
-                 <div className="text-center bg-white/5 rounded-xl p-4 border border-white/10">
+                 <div className="text-center bg-white/5 rounded-xl p-4 border border-white/10 group relative cursor-help">
                      <span className={`block text-3xl font-black ${getScoreColor(reportCard.ratingsSummary?.behaviourScore)}`}>{reportCard.ratingsSummary?.behaviourScore}/5</span>
                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mt-2 block">Behaviour</span>
+                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] p-2 rounded w-32 hidden group-hover:block z-50 text-center border border-teal-500/30">
+                        {DEFINITIONS['Behaviour']}
+                     </div>
                  </div>
              </div>
-             <p className="text-sm font-medium italic text-gray-300 text-center border-t border-white/10 pt-4">"{reportCard.ratingsSummary?.coachComment}"</p>
+             
+             {/* Grading Key - MOVED HERE */}
+             <div className="flex flex-wrap justify-center gap-4 py-3 border-t border-b border-white/10 mb-4 bg-white/5 rounded-lg">
+                 <div className="flex items-center gap-2"><div className="w-3 h-3 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full shadow-sm"></div><span className="text-[10px] uppercase font-bold text-gray-400">5 - Outstanding</span></div>
+                 <div className="flex items-center gap-2"><div className="w-3 h-3 bg-teal-500 rounded-full"></div><span className="text-[10px] uppercase font-bold text-gray-400">4 - Very Strong</span></div>
+                 <div className="flex items-center gap-2"><div className="w-3 h-3 bg-orange-500 rounded-full"></div><span className="text-[10px] uppercase font-bold text-gray-400">3 - Meeting Exp.</span></div>
+                 <div className="flex items-center gap-2"><div className="w-3 h-3 bg-red-500 rounded-full"></div><span className="text-[10px] uppercase font-bold text-gray-400">1-2 - Developing</span></div>
+            </div>
+
+             <p className="text-sm font-medium italic text-gray-300 text-center">"{reportCard.ratingsSummary?.coachComment}"</p>
         </div>
 
         {/* 2. Coach Final Summary */}
@@ -135,23 +166,32 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, onB
                 const avg = (stats.reduce((acc, curr) => acc + curr.value, 0) / stats.length).toFixed(1);
 
                 return (
-                    <div key={group} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                    // REMOVED OVERFLOW HIDDEN HERE to fix tooltip
+                    <div key={group} className="bg-white rounded-xl shadow-sm border border-gray-100">
+                        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center group relative cursor-help rounded-t-xl">
                             <div className="flex items-center gap-2">
                                 <span className={headerColor}>{getGroupIcon(group)}</span>
                                 <h3 className={`font-black uppercase tracking-wide text-sm ${headerColor}`}>{group}</h3>
+                                <Info size={12} className="text-gray-400" />
                             </div>
                             <span className="bg-black text-white text-xs font-bold px-2 py-1 rounded">{avg}</span>
+                             <div className="absolute bottom-full left-0 mb-2 bg-black text-white text-[10px] p-2 rounded w-48 hidden group-hover:block z-50 shadow-xl border border-teal-500/30">
+                                {DEFINITIONS[group]}
+                            </div>
                         </div>
                         <div className="p-5 space-y-4">
                             {stats.map(stat => (
-                                <div key={stat.name}>
-                                    <div className="flex justify-between items-end mb-1">
-                                        <span className="text-xs font-bold text-gray-600 uppercase tracking-tight">{stat.name}</span>
+                                <div key={stat.name} className="group relative">
+                                    <div className="flex justify-between items-end mb-1 cursor-help">
+                                        <span className="text-xs font-bold text-gray-600 uppercase tracking-tight border-b border-dashed border-gray-300">{stat.name}</span>
                                         <span className={`text-[10px] font-black text-white px-1.5 rounded ${getBarColor(stat.value)}`}>{stat.value}</span>
                                     </div>
                                     <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                                         <div className={`h-full rounded-full ${getBarColor(stat.value)}`} style={{ width: `${(stat.value/5)*100}%` }}></div>
+                                    </div>
+                                    {/* Tooltip for specific stat */}
+                                    <div className="absolute bottom-full left-0 mb-1 bg-gray-800 text-white text-[9px] p-1.5 rounded w-40 hidden group-hover:block z-40">
+                                        {DEFINITIONS[stat.name] || stat.name}
                                     </div>
                                 </div>
                             ))}
@@ -161,25 +201,60 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({ reportCard, player, onB
             })}
         </div>
         
-        {/* Grading Key */}
-        <div className="flex flex-wrap justify-center gap-4 py-4 border-t border-b border-gray-200">
-             <div className="flex items-center gap-2"><div className="w-3 h-3 bg-[#D4AF37] rounded-full"></div><span className="text-[10px] uppercase font-bold text-gray-500">5 - Outstanding</span></div>
-             <div className="flex items-center gap-2"><div className="w-3 h-3 bg-teal-500 rounded-full"></div><span className="text-[10px] uppercase font-bold text-gray-500">4 - Very Strong</span></div>
-             <div className="flex items-center gap-2"><div className="w-3 h-3 bg-orange-500 rounded-full"></div><span className="text-[10px] uppercase font-bold text-gray-500">3 - Meeting Exp.</span></div>
-             <div className="flex items-center gap-2"><div className="w-3 h-3 bg-red-500 rounded-full"></div><span className="text-[10px] uppercase font-bold text-gray-500">1-2 - Developing</span></div>
-        </div>
-
-        {/* 5. Improvements (Clickable) */}
+        {/* 5. Improvements (Modern Expandable Drills) */}
         <div className="bg-white rounded-xl shadow-sm border border-amber-100 p-6">
-            <h3 className="text-sm font-black text-amber-800 uppercase tracking-widest mb-4 flex items-center gap-2"><AlertCircle size={16} /> Improvements (Click for Drills)</h3>
+            <h3 className="text-sm font-black text-amber-800 uppercase tracking-widest mb-4 flex items-center gap-2"><AlertCircle size={16} /> Improvements & Drills</h3>
             <div className="grid md:grid-cols-2 gap-4">
-                <div onClick={() => handleDrillClick(reportCard.improvements?.keyArea)} className="bg-amber-50 p-4 rounded-lg border border-amber-100 cursor-pointer hover:bg-amber-100 transition-colors">
-                    <span className="text-[10px] text-amber-600 uppercase font-bold tracking-widest block mb-1">Key Focus Area</span>
-                    <p className="text-sm font-bold text-gray-800 underline decoration-dotted">{reportCard.improvements?.keyArea}</p>
+                {/* Key Area */}
+                <div className="border border-amber-100 rounded-xl overflow-hidden transition-all duration-300">
+                     <div 
+                        onClick={() => handleDrillExpand(reportCard.improvements?.keyArea, 'key')}
+                        className="bg-amber-50 p-4 cursor-pointer hover:bg-amber-100 flex justify-between items-center"
+                     >
+                        <div>
+                            <span className="text-[10px] text-amber-600 uppercase font-bold tracking-widest block mb-1">Key Focus Area</span>
+                            <p className="text-sm font-bold text-gray-800">{reportCard.improvements?.keyArea}</p>
+                        </div>
+                        {expandedDrill === 'key' ? <ChevronUp size={16} className="text-amber-600"/> : <ChevronDown size={16} className="text-amber-400"/>}
+                     </div>
+                     {expandedDrill === 'key' && (
+                         <div className="bg-white p-4 text-sm text-gray-600 border-t border-amber-100 animate-in fade-in slide-in-from-top-2">
+                             {loadingDrill ? (
+                                 <span className="flex items-center gap-2"><div className="w-3 h-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div> Fetching Drill...</span>
+                             ) : (
+                                 <>
+                                     <strong className="block text-amber-800 mb-1 uppercase text-[10px] tracking-wider">Coach Recommended Drill:</strong>
+                                     {drillContent}
+                                 </>
+                             )}
+                         </div>
+                     )}
                 </div>
-                <div onClick={() => handleDrillClick(reportCard.improvements?.buildOnArea)} className="bg-gray-50 p-4 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors">
-                    <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-1">Secondary Focus</span>
-                    <p className="text-sm font-bold text-gray-800 underline decoration-dotted">{reportCard.improvements?.buildOnArea}</p>
+
+                {/* Build On Area */}
+                <div className="border border-gray-100 rounded-xl overflow-hidden transition-all duration-300">
+                     <div 
+                        onClick={() => handleDrillExpand(reportCard.improvements?.buildOnArea, 'build')}
+                        className="bg-gray-50 p-4 cursor-pointer hover:bg-gray-100 flex justify-between items-center"
+                     >
+                        <div>
+                            <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-1">Secondary Focus</span>
+                            <p className="text-sm font-bold text-gray-800">{reportCard.improvements?.buildOnArea}</p>
+                        </div>
+                        {expandedDrill === 'build' ? <ChevronUp size={16} className="text-gray-600"/> : <ChevronDown size={16} className="text-gray-400"/>}
+                     </div>
+                     {expandedDrill === 'build' && (
+                         <div className="bg-white p-4 text-sm text-gray-600 border-t border-gray-100 animate-in fade-in slide-in-from-top-2">
+                             {loadingDrill ? (
+                                 <span className="flex items-center gap-2"><div className="w-3 h-3 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div> Fetching Drill...</span>
+                             ) : (
+                                 <>
+                                     <strong className="block text-gray-800 mb-1 uppercase text-[10px] tracking-wider">Coach Recommended Drill:</strong>
+                                     {drillContent}
+                                 </>
+                             )}
+                         </div>
+                     )}
                 </div>
             </div>
         </div>

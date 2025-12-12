@@ -1,8 +1,10 @@
+
 import React, { useState } from 'react';
 import { Player, ReportCard, Coach, StatGroup } from '../types';
 import ReportCardView from './ReportCardView';
-import { LogOut, ChevronRight, Calendar, TrendingUp, Users, Instagram, Mail, Trophy } from 'lucide-react';
+import { LogOut, ChevronRight, Calendar, TrendingUp, Users, Instagram, Mail, Trophy, Info, MessageSquare } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+import { DEFINITIONS } from '../constants';
 
 interface ParentDashboardProps {
   player: Player;
@@ -13,7 +15,10 @@ interface ParentDashboardProps {
 
 const ParentDashboard: React.FC<ParentDashboardProps> = ({ player, coaches, onLogout, teamLogo }) => {
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
-  const [view, setView] = useState<'dashboard' | 'contact'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'contact' | 'feedback'>('dashboard');
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackType, setFeedbackType] = useState<'positive' | 'constructive'>('positive');
+  const [feedbackSent, setFeedbackSent] = useState(false);
 
   const sortedReports = [...player.reportCards].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const currentReport = sortedReports[0];
@@ -25,6 +30,16 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ player, coaches, onLo
     acc[report.season].push(report);
     return acc;
   }, {} as Record<string, ReportCard[]>);
+
+  const handleSendFeedback = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFeedbackSent(true);
+    setTimeout(() => {
+        setFeedbackText('');
+        setFeedbackSent(false);
+        setView('dashboard');
+    }, 2000);
+  }
 
   // Prepare Data for Line Chart
   const chartData = [...sortedReports].reverse().map(report => {
@@ -62,10 +77,17 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ player, coaches, onLo
         <div className="absolute top-0 right-0 w-72 h-72 bg-teal-600/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
         <div className="relative z-10 flex justify-between items-center mb-8">
           <div className="flex flex-col">
-            <h1 className="text-xl font-black tracking-tighter italic font-montserrat">ELITE {player.branch}</h1>
-            <span className="text-[10px] text-teal-400 font-bold tracking-widest uppercase">Performance Portal</span>
+            <h1 className="text-lg md:text-xl font-black tracking-tighter italic font-montserrat uppercase">PLAYER PERFORMANCE PORTAL</h1>
+            {currentReport ? (
+                 <span className="text-[10px] text-teal-400 font-bold tracking-widest uppercase">{currentReport.quarter} REPORT</span>
+            ) : (
+                 <span className="text-[10px] text-teal-400 font-bold tracking-widest uppercase">JDA COACHING & ACADEMY</span>
+            )}
           </div>
           <div className="flex gap-2">
+            <button onClick={() => setView('feedback')} className={`p-2 rounded-full transition-colors ${view === 'feedback' ? 'bg-teal-500 text-white' : 'bg-white/10 text-gray-400 hover:text-white'}`}>
+                <MessageSquare size={18} />
+            </button>
             <button onClick={() => setView(view === 'dashboard' ? 'contact' : 'dashboard')} className={`p-2 rounded-full transition-colors ${view === 'contact' ? 'bg-teal-500 text-white' : 'bg-white/10 text-gray-400 hover:text-white'}`}>
                 <Users size={18} />
             </button>
@@ -81,10 +103,16 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ player, coaches, onLo
             <div className="absolute -bottom-2 -right-2 bg-white rounded-full border-2 border-white shadow-md w-8 h-8 overflow-hidden">
                  <img src={teamLogo} className="w-full h-full object-cover" alt="Team Badge" />
             </div>
+            {/* Average Rating Badge */}
+            {currentReport && (
+                 <div className="absolute top-0 right-0 transform translate-x-2 -translate-y-2 bg-black text-white border-2 border-teal-400 rounded-full w-10 h-10 flex items-center justify-center font-black text-sm shadow-lg z-20">
+                     {currentReport.overallRating}
+                 </div>
+            )}
           </div>
           <h2 className="text-3xl font-black mb-1 tracking-tight font-montserrat">{player.name}</h2>
           <p className="text-teal-400 font-bold text-sm mb-6 uppercase tracking-wide">
-            {player.branch === 'ACADEMY' ? `${player.teamId} • #${player.jerseyNumber}` : 'Private Coaching'} • {player.position}
+            {player.branch === 'ACADEMY' ? `${player.teamId} • #${player.jerseyNumber}` : player.branch === 'TECH_CENTRE' ? `Tech Centre • ${player.teamId}` : 'Private Coaching'} • {player.position}
           </p>
           
           {view === 'dashboard' && currentReport && (
@@ -93,9 +121,16 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ player, coaches, onLo
                     const stats = currentReport.stats.filter(s => s.group === g);
                     const avg = stats.length ? (stats.reduce((a,b)=>a+b.value,0)/stats.length).toFixed(1) : '-';
                     return (
-                        <div key={g} className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 flex flex-col items-center justify-center">
-                            <span className="block text-[8px] text-gray-400 uppercase font-bold tracking-wider mb-1 text-center">{g.substring(0, 4)}</span>
-                            <span className={`text-lg font-black ${parseFloat(avg) >= 4.5 ? 'text-[#D4AF37]' : 'text-white'}`}>{avg}</span>
+                        <div key={g} className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 flex flex-col items-center justify-center group relative cursor-help">
+                            <span className="block text-[8px] text-gray-400 uppercase font-bold tracking-wider mb-1 text-center flex items-center gap-1">
+                                {g} <Info size={8} />
+                            </span>
+                            <span className={`text-lg font-black ${parseFloat(avg) >= 4.5 ? 'text-yellow-400 drop-shadow-sm' : 'text-white'}`}>{avg}</span>
+                            
+                            {/* Tooltip */}
+                            <div className="absolute bottom-full mb-2 bg-black text-white text-[10px] p-2 rounded w-32 hidden group-hover:block z-50 text-center shadow-xl border border-teal-500/30">
+                                {DEFINITIONS[g] || g}
+                            </div>
                         </div>
                     )
                 })}
@@ -105,7 +140,37 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ player, coaches, onLo
       </div>
 
       <div className="max-w-xl mx-auto px-4 -mt-10 relative z-20 space-y-6">
-        {view === 'contact' ? (
+        {view === 'feedback' && (
+            <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100 animate-in fade-in slide-in-from-bottom-8">
+               <h3 className="text-black font-black mb-2 flex items-center gap-2 uppercase tracking-wide text-sm">
+                   <MessageSquare className="text-teal-500" size={18} /> Give Feedback
+               </h3>
+               <p className="text-xs text-gray-500 mb-6">Help us improve JDA Coaching. Your reviews help us grow!</p>
+               
+               {feedbackSent ? (
+                   <div className="bg-teal-50 text-teal-800 p-4 rounded-xl text-center font-bold">
+                       Thank you for your feedback!
+                   </div>
+               ) : (
+                   <form onSubmit={handleSendFeedback} className="space-y-4">
+                       <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+                           <button type="button" onClick={() => setFeedbackType('positive')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-colors ${feedbackType === 'positive' ? 'bg-white shadow text-teal-600' : 'text-gray-400'}`}>Positive Review</button>
+                           <button type="button" onClick={() => setFeedbackType('constructive')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-colors ${feedbackType === 'constructive' ? 'bg-white shadow text-orange-600' : 'text-gray-400'}`}>Constructive</button>
+                       </div>
+                       <textarea 
+                         required
+                         className="w-full bg-white border border-gray-200 rounded-xl p-3 text-sm focus:border-teal-500 outline-none h-32"
+                         placeholder={feedbackType === 'positive' ? "What do you love about the academy?" : "How can we improve?"}
+                         value={feedbackText}
+                         onChange={(e) => setFeedbackText(e.target.value)}
+                       />
+                       <button type="submit" className="w-full bg-black text-white py-3 rounded-xl font-bold text-sm hover:bg-zinc-800">Submit Feedback</button>
+                   </form>
+               )}
+            </div>
+        )}
+
+        {view === 'contact' && (
            <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100 animate-in fade-in slide-in-from-bottom-8">
                <h3 className="text-black font-black mb-6 flex items-center gap-2 uppercase tracking-wide text-sm border-b border-gray-100 pb-4">
                    <Users className="text-teal-500" size={18} /> Meet The Coaches
@@ -126,7 +191,9 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ player, coaches, onLo
                    ))}
                </div>
            </div>
-        ) : (
+        )} 
+        
+        {view === 'dashboard' && (
           <>
             {/* Trends Chart */}
             <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
@@ -143,7 +210,7 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ player, coaches, onLo
                             <Line type="monotone" dataKey="Technical" stroke="#3b82f6" strokeWidth={3} dot={{r: 4}} />
                             <Line type="monotone" dataKey="Tactical" stroke="#a855f7" strokeWidth={3} dot={{r: 4}} />
                             {/* Metallic Gold for Physical */}
-                            <Line type="monotone" dataKey="Physical" stroke="#D4AF37" strokeWidth={3} dot={{r: 4}} /> 
+                            <Line type="monotone" dataKey="Physical" stroke="#EAB308" strokeWidth={3} dot={{r: 4}} /> 
                             <Line type="monotone" dataKey="Psychological" stroke="#10b981" strokeWidth={3} dot={{r: 4}} />
                         </LineChart>
                     </ResponsiveContainer>

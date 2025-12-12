@@ -1,9 +1,10 @@
+
 export enum UserRole {
   PARENT = 'PARENT',
   COACH = 'COACH'
 }
 
-export type Branch = 'ACADEMY' | 'COACHING';
+export type Branch = 'ACADEMY' | 'COACHING' | 'TECH_CENTRE';
 
 export type StatGroup = 'Technical' | 'Tactical' | 'Physical' | 'Psychological';
 
@@ -42,6 +43,8 @@ export interface ReportCard {
   season: string;
   quarter: string; // e.g. "Winter Term"
   date: string;
+  authorCoachId?: string; // ID of the coach who wrote it
+  authorCoachName?: string; // Name snapshot
   
   // New Structure
   attendance: AttendanceRecord;
@@ -88,4 +91,13 @@ export interface Coach extends User {
   assignedTeams: string[]; 
   isAdmin: boolean;
   imageUrl?: string;
+}
+
+export interface Feedback {
+  id: string;
+  playerId: string;
+  playerName: string;
+  message: string;
+  date: string;
+  type: 'positive' | 'constructive';
 }

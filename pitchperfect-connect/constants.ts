@@ -1,6 +1,28 @@
+
 import { Player, UserRole, StatGroup, Coach, Team, Branch } from './types';
 
 export const TEAM_LOGO_URL = "https://cdn-icons-png.flaticon.com/512/1665/1665670.png"; 
+
+// Definitions for Tooltips
+export const DEFINITIONS: Record<string, string> = {
+  // Groups
+  Technical: "The mechanics of ball control, passing, and shooting.",
+  Tactical: "Understanding of the game, positioning, and decision making.",
+  Physical: "Speed, strength, agility, and overall fitness levels.",
+  Psychological: "Mental attributes like confidence, focus, and resilience.",
+  
+  // Ratings
+  Application: "Effort levels applied during training and matches.",
+  Behaviour: "Attitude towards coaches, teammates, and opponents.",
+  Attendance: "Consistency of presence at training sessions.",
+  Commitment: "Dedication to learning and improving outside of mandatory sessions.",
+  
+  // Specific Stats (Examples)
+  'Ball Mastery': "Control and manipulation of the ball with different parts of the foot.",
+  'Scanning/Awareness': "Checking shoulders to understand surroundings before receiving.",
+  'Decision Making': "Choosing the right option (pass vs dribble) at the right time.",
+  'Resilience': "Ability to bounce back from mistakes or losing."
+};
 
 // Helper to create stats (Scale 1-5)
 const createStats = (
@@ -65,6 +87,7 @@ export const MOCK_PLAYERS: Player[] = [
         season: '2025/26',
         quarter: 'Winter Term',
         date: '2025-12-12',
+        authorCoachName: 'Head Coach',
         overallRating: 4.2,
         attendance: {
           attendanceScore: 5,

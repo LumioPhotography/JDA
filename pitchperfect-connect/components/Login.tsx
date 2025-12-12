@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { UserRole } from '../types';
 import { Shield, KeyRound, User as UserIcon, Lock, ArrowRight } from 'lucide-react';
@@ -46,11 +47,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, teamLogo }) => {
                )}
             </div>
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tighter brand-font italic">
-            ELITE <span className="text-teal-500">PERFORMANCE</span>
+          <h1 className="text-2xl font-black text-white tracking-tighter brand-font italic uppercase">
+            Player <span className="text-teal-500">Performance</span> Portal
           </h1>
           <p className="text-gray-400 text-[10px] font-bold tracking-[0.2em] uppercase mt-2">
-            COACHING & ACADEMY PORTAL
+            JDA Coaching & Academy
           </p>
         </div>
 
