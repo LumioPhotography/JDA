@@ -21,7 +21,7 @@ const App: React.FC = () => {
 
   // Debugging Version
   useEffect(() => {
-    console.log("App Version 3.0 (Robustness) Loaded");
+    console.log("App Version 3.1 (Live) Loaded");
   }, []);
 
   const fetchData = async () => {

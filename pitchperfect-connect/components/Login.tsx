@@ -159,7 +159,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, teamLogo }) => {
           )}
         </div>
         <div className="bg-gray-50 p-4 text-center border-t border-gray-100">
-             <p className="text-[10px] text-gray-400 font-bold uppercase">v2.6 • PitchPerfect Connect</p>
+             <p className="text-[10px] text-gray-400 font-bold uppercase">v3.1 (Live) • PitchPerfect Connect</p>
         </div>
       </div>
     </div>
